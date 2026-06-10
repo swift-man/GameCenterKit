@@ -1,0 +1,37 @@
+version: 1
+
+review:
+  include:
+    - "Package.swift"
+    - "Package.resolved"
+    - "Sources/**/*.swift"
+    - "Tests/**/*.swift"
+    - "README.md"
+    - "AGENTS.md"
+    - ".coderabbit.yaml"
+    - ".reviewbot.yml"
+
+  exclude:
+    # local/editor noise
+    - ".DS_Store"
+    - "**/.DS_Store"
+    - ".idea/**"
+    - ".vscode/**"
+
+    # SwiftPM / Xcode build output
+    - ".build/**"
+    - ".swiftpm/**"
+    - "DerivedData/**"
+
+    # generated logs and coverage
+    - "logs/**"
+    - "**/*.log"
+    - "coverage/**"
+
+  always_review:
+    - ".reviewbot.yml"
+    - ".coderabbit.yaml"
+    - "AGENTS.md"
+    - "README.md"
+    - "Package.swift"
+    - "Sources/GameCenterKit/Public/**"
