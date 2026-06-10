@@ -46,7 +46,7 @@ extension GameCenterLeaderboard {
         var activityProperties: [String: String] = [:]
         var isHidden: Bool?
 
-        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0, *) {
+        if #available(iOS 26.0, macOS 26.0, visionOS 26.0, watchOS 26.0, *) {
             details = leaderboard.leaderboardDescription
             releaseState = GameCenterReleaseState(releaseState: leaderboard.releaseState)
             activityIdentifier = leaderboard.activityIdentifier
@@ -83,7 +83,7 @@ extension GameCenterAchievementProgress {
 }
 
 extension GameCenterChallengeDefinition {
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, watchOS 26.0, *)
+    @available(iOS 26.0, macOS 26.0, visionOS 26.0, watchOS 26.0, *)
     init(challengeDefinition: GKChallengeDefinition) {
         self.init(
             id: challengeDefinition.identifier,
@@ -99,7 +99,7 @@ extension GameCenterChallengeDefinition {
 }
 
 extension GameCenterGameActivityDefinition {
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, *)
+    @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
     init(activityDefinition: GKGameActivityDefinition) {
         self.init(
             id: activityDefinition.identifier,
@@ -117,7 +117,7 @@ extension GameCenterGameActivityDefinition {
 }
 
 extension GameCenterGameActivity {
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, *)
+    @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
     init(activity: GKGameActivity) {
         self.init(
             id: activity.identifier,
@@ -179,7 +179,7 @@ extension GameCenterLeaderboardKind {
 }
 
 extension GameCenterReleaseState {
-    @available(iOS 18.4, macOS 15.4, tvOS 18.4, visionOS 2.4, watchOS 11.4, *)
+    @available(iOS 18.4, macOS 15.4, visionOS 2.4, watchOS 11.4, *)
     init(releaseState: GKReleaseState) {
         if releaseState.contains(.released) {
             self = .released
@@ -223,7 +223,7 @@ extension GameCenterFriendsAuthorizationStatus {
     }
 }
 
-@available(iOS 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, *)
+@available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
 extension GameCenterGameActivityPlayStyle {
     init(playStyle: GKGameActivityPlayStyle) {
         switch playStyle {
@@ -239,7 +239,7 @@ extension GameCenterGameActivityPlayStyle {
     }
 }
 
-@available(iOS 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, *)
+@available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
 extension GameCenterGameActivityState {
     init(activityState: GKGameActivity.State) {
         switch activityState {
