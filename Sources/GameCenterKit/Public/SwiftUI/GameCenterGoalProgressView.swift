@@ -75,7 +75,7 @@ public struct GameCenterGoalProgressView: View {
             return 1
         }
 
-        return min(Double(currentValue) / Double(goal.targetValue), 1)
+        return max(0, min(Double(currentValue) / Double(goal.targetValue), 1))
     }
 
     private var isCompleted: Bool {

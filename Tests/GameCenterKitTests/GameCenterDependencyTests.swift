@@ -80,6 +80,50 @@ final class GameCenterDependencyTests: XCTestCase {
         XCTAssertEqual(ended.partyCode, "ABCD")
         XCTAssertEqual(activities[started.id], ended)
     }
+
+    @MainActor
+    func testDashboardRefreshClearsSnapshotOnCurrentFailure() async {
+        let request = GameCenterLeaderboardRequest(
+            leaderboardID: "daily-id",
+            rankingScope: .daily
+        )
+        let dailySnapshot = GameCenterLeaderboardSnapshot(
+            request: request,
+            entries: [
+                GameCenterLeaderboardEntry(
+                    id: "daily-leader",
+                    rank: 1,
+                    score: 100,
+                    formattedScore: "100",
+                    displayName: "Daily Leader",
+                    gamePlayerID: "daily-leader"
+                ),
+            ]
+        )
+        let preview = PreviewGameCenterClient(
+            snapshots: ["daily-id": dailySnapshot]
+        )
+
+        await withDependencies {
+            $0.gameCenterAuthenticationClient = preview
+            $0.gameCenterLeaderboardClient = preview
+        } operation: {
+            let model = GameCenterDashboardViewModel(
+                configuration: GameCenterConfiguration(
+                    leaderboardIDs: [.daily: "daily-id"]
+                )
+            )
+
+            await model.refresh()
+            XCTAssertEqual(model.snapshot, dailySnapshot)
+
+            model.selectedScope = .weekly
+            await model.refresh()
+
+            XCTAssertNil(model.snapshot)
+            XCTAssertNotNil(model.errorMessage)
+        }
+    }
 }
 
 private struct StubGameCenterClient: GameCenterClientProtocol {

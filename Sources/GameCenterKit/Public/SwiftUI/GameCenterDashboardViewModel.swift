@@ -83,6 +83,7 @@ public final class GameCenterDashboardViewModel: ObservableObject {
                 return
             }
 
+            snapshot = nil
             errorMessage = String(describing: error)
         }
     }

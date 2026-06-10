@@ -71,7 +71,7 @@ public struct GameCenterSystemDashboardView: UIViewControllerRepresentable {
         context.coordinator.update(onDismiss: onDismiss, dismiss: dismiss)
     }
 
-    public final class Coordinator: NSObject, GKGameCenterControllerDelegate {
+    public final class Coordinator: NSObject, @MainActor GKGameCenterControllerDelegate {
         private var onDismiss: (@MainActor () -> Void)?
         private var dismiss: DismissAction
 
