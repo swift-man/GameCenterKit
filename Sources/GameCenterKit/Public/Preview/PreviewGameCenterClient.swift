@@ -15,8 +15,13 @@ public struct PreviewGameCenterClient:
     public var friends: [GameCenterPlayer]
     public var challengeDefinitions: [GameCenterChallengeDefinition]
     public var activityDefinitions: [GameCenterGameActivityDefinition]
-    public var activities: [String: GameCenterGameActivity]
     private let activityStore: PreviewGameCenterActivityStore
+
+    public var activities: [String: GameCenterGameActivity] {
+        get async {
+            await activityStore.snapshot()
+        }
+    }
 
     public init(
         player: GameCenterPlayer = .preview,
@@ -35,7 +40,6 @@ public struct PreviewGameCenterClient:
         self.friends = friends
         self.challengeDefinitions = challengeDefinitions
         self.activityDefinitions = activityDefinitions
-        self.activities = activities
         self.activityStore = PreviewGameCenterActivityStore(activities: activities)
     }
 
@@ -376,6 +380,10 @@ private actor PreviewGameCenterActivityStore {
 
     func activity(definitionID: String) -> GameCenterGameActivity? {
         activities.values.first { $0.definitionID == definitionID }
+    }
+
+    func snapshot() -> [String: GameCenterGameActivity] {
+        activities
     }
 
     func store(_ activity: GameCenterGameActivity) {

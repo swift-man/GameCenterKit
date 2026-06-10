@@ -70,6 +70,7 @@ final class GameCenterDependencyTests: XCTestCase {
         let paused = try await client.pauseGameActivity(activityID: started.id)
         let resumed = try await client.resumeGameActivity(activityID: started.id)
         let ended = try await client.endGameActivity(activityID: started.id)
+        let activities = await client.activities
 
         XCTAssertEqual(updated.id, started.id)
         XCTAssertEqual(updated.properties, ["round": "1"])
@@ -77,6 +78,7 @@ final class GameCenterDependencyTests: XCTestCase {
         XCTAssertEqual(resumed.state, .active)
         XCTAssertEqual(ended.state, .ended)
         XCTAssertEqual(ended.partyCode, "ABCD")
+        XCTAssertEqual(activities[started.id], ended)
     }
 }
 
