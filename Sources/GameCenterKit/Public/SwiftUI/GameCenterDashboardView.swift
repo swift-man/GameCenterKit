@@ -30,6 +30,16 @@ public struct GameCenterDashboardView: View {
         )
     }
 
+    public init(
+        model: GameCenterDashboardViewModel,
+        showsSystemProfileButton: Bool = true,
+        showsPlayerScopePicker: Bool = true
+    ) {
+        self.showsSystemProfileButton = showsSystemProfileButton
+        self.showsPlayerScopePicker = showsPlayerScopePicker
+        _model = StateObject(wrappedValue: model)
+    }
+
     public var body: some View {
         VStack(spacing: 16) {
             header
@@ -53,7 +63,9 @@ public struct GameCenterDashboardView: View {
         }
         #if canImport(UIKit) && !os(watchOS)
         .sheet(item: $systemDashboardMode) { mode in
-            GameCenterSystemDashboardView(mode: mode)
+            GameCenterSystemDashboardView(mode: mode) {
+                systemDashboardMode = nil
+            }
         }
         #endif
     }

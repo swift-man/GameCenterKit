@@ -65,6 +65,9 @@ public struct GameCenterGoalProgressView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .task(id: goal.achievementID) {
+            await syncReportedAchievementState()
+        }
     }
 
     private var progress: Double {
@@ -104,6 +107,25 @@ public struct GameCenterGoalProgressView: View {
             didReportAchievement = true
         } catch {
             errorMessage = String(describing: error)
+        }
+    }
+
+    private func syncReportedAchievementState() async {
+        guard let achievementID = goal.achievementID else {
+            didReportAchievement = false
+            return
+        }
+
+        do {
+            let achievements = try await achievementClient.loadAchievements()
+            guard let progress = achievements.first(where: { $0.id == achievementID }) else {
+                didReportAchievement = false
+                return
+            }
+
+            didReportAchievement = progress.isCompleted || progress.percentComplete >= 100
+        } catch {
+            didReportAchievement = false
         }
     }
 }

@@ -23,39 +23,7 @@ struct LiveGameCenterClient:
     #if canImport(UIKit) || canImport(AppKit)
     @MainActor
     func authenticate(presenting presenter: GameCenterAuthenticationPresenter? = nil) async throws -> GameCenterPlayer {
-        if GKLocalPlayer.local.isAuthenticated {
-            return GameCenterPlayer(localPlayer: GKLocalPlayer.local)
-        }
-
-        return try await withCheckedThrowingContinuation { continuation in
-            let state = AuthenticationContinuation(continuation: continuation)
-
-            GKLocalPlayer.local.authenticateHandler = { viewController, error in
-                Task { @MainActor in
-                    if let viewController {
-                        guard let presenter else {
-                            state.resume(throwing: GameCenterClientError.authenticationPresentationRequired)
-                            return
-                        }
-
-                        await presenter(viewController)
-                        return
-                    }
-
-                    if let error {
-                        state.resume(throwing: error)
-                        return
-                    }
-
-                    guard GKLocalPlayer.local.isAuthenticated else {
-                        state.resume(throwing: GameCenterClientError.notAuthenticated)
-                        return
-                    }
-
-                    state.resume(returning: GameCenterPlayer(localPlayer: GKLocalPlayer.local))
-                }
-            }
-        }
+        try await LiveGameCenterAuthenticationCoordinator.shared.authenticate(presenting: presenter)
     }
     #endif
 
@@ -299,6 +267,11 @@ struct LiveGameCenterClient:
     func presentFriendRequestCreator() async throws {
         throw GameCenterClientError.unsupportedPlatform("Friend request creator is not implemented for this platform. Use Access Point friending where available.")
     }
+    #elseif canImport(UIKit)
+    @MainActor
+    func presentFriendRequestCreator() async throws {
+        throw GameCenterClientError.unsupportedPlatform("Friend request creator is unavailable on this platform. Use Access Point friending where available.")
+    }
     #endif
 
     func loadChallengeDefinitions() async throws -> [GameCenterChallengeDefinition] {
@@ -367,8 +340,7 @@ struct LiveGameCenterClient:
         } else {
             activity = try GKGameActivity.start(definition: definition)
         }
-        await LiveGameCenterActivityRegistry.shared.store(activity)
-        return GameCenterGameActivity(activity: activity)
+        return await LiveGameCenterActivityRegistry.shared.store(SendableGameActivity(activity))
     }
 
     func updateGameActivityProperties(activityID: String, properties: [String: String]) async throws -> GameCenterGameActivity {
@@ -376,9 +348,10 @@ struct LiveGameCenterClient:
             throw GameCenterClientError.unsupportedPlatform("Activities require iOS 26, macOS 26, tvOS 26, or visionOS 26.")
         }
 
-        let activity = try await LiveGameCenterActivityRegistry.shared.activity(id: activityID)
-        activity.properties = properties
-        return GameCenterGameActivity(activity: activity)
+        return try await LiveGameCenterActivityRegistry.shared.updateProperties(
+            id: activityID,
+            properties: properties
+        )
     }
 
     func setScore(_ score: Int, leaderboardID: String, activityID: String, context: Int = 0) async throws {
@@ -386,13 +359,12 @@ struct LiveGameCenterClient:
             throw GameCenterClientError.unsupportedPlatform("Activities require iOS 26, macOS 26, tvOS 26, or visionOS 26.")
         }
 
-        let activity = try await LiveGameCenterActivityRegistry.shared.activity(id: activityID)
-        let leaderboards = try await GKLeaderboard.loadLeaderboards(IDs: [leaderboardID])
-        guard let leaderboard = leaderboards.first else {
-            throw GameCenterClientError.leaderboardNotFound(leaderboardID)
-        }
-
-        activity.setScore(on: leaderboard, to: score, context: context)
+        try await LiveGameCenterActivityRegistry.shared.setScore(
+            id: activityID,
+            leaderboardID: leaderboardID,
+            score: score,
+            context: context
+        )
     }
 
     func setAchievementProgress(_ percentComplete: Double, achievementID: String, activityID: String) async throws {
@@ -400,9 +372,11 @@ struct LiveGameCenterClient:
             throw GameCenterClientError.unsupportedPlatform("Activities require iOS 26, macOS 26, tvOS 26, or visionOS 26.")
         }
 
-        let activity = try await LiveGameCenterActivityRegistry.shared.activity(id: activityID)
-        let achievement = GKAchievement(identifier: achievementID)
-        activity.setProgress(on: achievement, to: min(max(percentComplete, 0), 100))
+        try await LiveGameCenterActivityRegistry.shared.setAchievementProgress(
+            id: activityID,
+            achievementID: achievementID,
+            percentComplete: percentComplete
+        )
     }
 
     func setAchievementCompleted(achievementID: String, activityID: String) async throws {
@@ -410,8 +384,10 @@ struct LiveGameCenterClient:
             throw GameCenterClientError.unsupportedPlatform("Activities require iOS 26, macOS 26, tvOS 26, or visionOS 26.")
         }
 
-        let activity = try await LiveGameCenterActivityRegistry.shared.activity(id: activityID)
-        activity.setAchievementCompleted(GKAchievement(identifier: achievementID))
+        try await LiveGameCenterActivityRegistry.shared.setAchievementCompleted(
+            id: activityID,
+            achievementID: achievementID
+        )
     }
 
     func pauseGameActivity(activityID: String) async throws -> GameCenterGameActivity {
@@ -419,7 +395,7 @@ struct LiveGameCenterClient:
             throw GameCenterClientError.unsupportedPlatform("Activities require iOS 26, macOS 26, tvOS 26, or visionOS 26.")
         }
 
-        return try await updateGameActivity(activityID: activityID) { $0.pause() }
+        return try await LiveGameCenterActivityRegistry.shared.pause(id: activityID)
     }
 
     func resumeGameActivity(activityID: String) async throws -> GameCenterGameActivity {
@@ -427,7 +403,7 @@ struct LiveGameCenterClient:
             throw GameCenterClientError.unsupportedPlatform("Activities require iOS 26, macOS 26, tvOS 26, or visionOS 26.")
         }
 
-        return try await updateGameActivity(activityID: activityID) { $0.resume() }
+        return try await LiveGameCenterActivityRegistry.shared.resume(id: activityID)
     }
 
     func endGameActivity(activityID: String) async throws -> GameCenterGameActivity {
@@ -435,11 +411,11 @@ struct LiveGameCenterClient:
             throw GameCenterClientError.unsupportedPlatform("Activities require iOS 26, macOS 26, tvOS 26, or visionOS 26.")
         }
 
-        return try await updateGameActivity(activityID: activityID) { $0.end() }
+        return try await LiveGameCenterActivityRegistry.shared.end(id: activityID)
     }
 
     func setGameActivityHandler(_ handler: (@Sendable (GameCenterPlayer, GameCenterGameActivity) async -> Bool)?) async {
-        guard #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) else {
+        guard #available(iOS 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, *) else {
             return
         }
 
@@ -485,15 +461,65 @@ private extension LiveGameCenterClient {
 
         return definition
     }
+}
 
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, *)
-    func updateGameActivity(
-        activityID: String,
-        operation: (GKGameActivity) -> Void
-    ) async throws -> GameCenterGameActivity {
-        let activity = try await LiveGameCenterActivityRegistry.shared.activity(id: activityID)
-        operation(activity)
-        return GameCenterGameActivity(activity: activity)
+@MainActor
+private final class LiveGameCenterAuthenticationCoordinator {
+    static let shared = LiveGameCenterAuthenticationCoordinator()
+
+    private var inFlightAuthentication: Task<GameCenterPlayer, Error>?
+
+    func authenticate(presenting presenter: GameCenterAuthenticationPresenter?) async throws -> GameCenterPlayer {
+        if GKLocalPlayer.local.isAuthenticated {
+            return GameCenterPlayer(localPlayer: GKLocalPlayer.local)
+        }
+
+        if let inFlightAuthentication {
+            return try await inFlightAuthentication.value
+        }
+
+        let task = Task { @MainActor in
+            try await Self.performAuthentication(presenting: presenter)
+        }
+        inFlightAuthentication = task
+
+        defer {
+            inFlightAuthentication = nil
+        }
+
+        return try await task.value
+    }
+
+    private static func performAuthentication(presenting presenter: GameCenterAuthenticationPresenter?) async throws -> GameCenterPlayer {
+        try await withCheckedThrowingContinuation { continuation in
+            let state = AuthenticationContinuation(continuation: continuation)
+
+            GKLocalPlayer.local.authenticateHandler = { viewController, error in
+                Task { @MainActor in
+                    if let viewController {
+                        guard let presenter else {
+                            state.resume(throwing: GameCenterClientError.authenticationPresentationRequired)
+                            return
+                        }
+
+                        await presenter(viewController)
+                        return
+                    }
+
+                    if let error {
+                        state.resume(throwing: error)
+                        return
+                    }
+
+                    guard GKLocalPlayer.local.isAuthenticated else {
+                        state.resume(throwing: GameCenterClientError.notAuthenticated)
+                        return
+                    }
+
+                    state.resume(returning: GameCenterPlayer(localPlayer: GKLocalPlayer.local))
+                }
+            }
+        }
     }
 }
 
@@ -516,21 +542,67 @@ private final class AuthenticationContinuation {
     }
 }
 
-#if os(iOS) || os(macOS) || os(visionOS)
-@available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
+#if os(iOS) || os(macOS) || os(tvOS) || os(visionOS)
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, *)
 private actor LiveGameCenterActivityRegistry {
     static let shared = LiveGameCenterActivityRegistry()
 
-    private var activities: [String: GKGameActivity] = [:]
+    private var activities: [String: SendableGameActivity] = [:]
     private var handler: (@Sendable (GameCenterPlayer, GameCenterGameActivity) async -> Bool)?
     private var listener: LiveGameCenterActivityListener?
 
-    func store(_ activity: GKGameActivity) {
-        activities[activity.identifier] = activity
+    func store(_ activity: SendableGameActivity) -> GameCenterGameActivity {
+        activities[activity.value.identifier] = activity
+        return GameCenterGameActivity(activity: activity.value)
     }
 
-    func activity(id: String) throws -> GKGameActivity {
-        guard let activity = activities[id] else {
+    func updateProperties(id: String, properties: [String: String]) throws -> GameCenterGameActivity {
+        let activity = try activity(id: id)
+        activity.properties = properties
+        return GameCenterGameActivity(activity: activity)
+    }
+
+    func setScore(id: String, leaderboardID: String, score: Int, context: Int) async throws {
+        let leaderboards = try await GKLeaderboard.loadLeaderboards(IDs: [leaderboardID])
+        guard let leaderboard = leaderboards.first else {
+            throw GameCenterClientError.leaderboardNotFound(leaderboardID)
+        }
+
+        let activity = try activity(id: id)
+        activity.setScore(on: leaderboard, to: score, context: context)
+    }
+
+    func setAchievementProgress(id: String, achievementID: String, percentComplete: Double) throws {
+        let activity = try activity(id: id)
+        let achievement = GKAchievement(identifier: achievementID)
+        activity.setProgress(on: achievement, to: min(max(percentComplete, 0), 100))
+    }
+
+    func setAchievementCompleted(id: String, achievementID: String) throws {
+        let activity = try activity(id: id)
+        activity.setAchievementCompleted(GKAchievement(identifier: achievementID))
+    }
+
+    func pause(id: String) throws -> GameCenterGameActivity {
+        let activity = try activity(id: id)
+        activity.pause()
+        return GameCenterGameActivity(activity: activity)
+    }
+
+    func resume(id: String) throws -> GameCenterGameActivity {
+        let activity = try activity(id: id)
+        activity.resume()
+        return GameCenterGameActivity(activity: activity)
+    }
+
+    func end(id: String) throws -> GameCenterGameActivity {
+        let activity = try activity(id: id)
+        activity.end()
+        return GameCenterGameActivity(activity: activity)
+    }
+
+    private func activity(id: String) throws -> GKGameActivity {
+        guard let activity = activities[id]?.value else {
             throw GameCenterClientError.activityNotFound(id)
         }
 
@@ -562,7 +634,7 @@ private actor LiveGameCenterActivityRegistry {
         activity: GameCenterGameActivity,
         rawActivity: SendableGameActivity
     ) async -> Bool {
-        store(rawActivity.value)
+        _ = store(rawActivity)
         guard let handler else {
             return false
         }
@@ -571,7 +643,7 @@ private actor LiveGameCenterActivityRegistry {
     }
 }
 
-@available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, *)
 private final class LiveGameCenterActivityListener: NSObject, GKLocalPlayerListener, @unchecked Sendable {
     private let registry: LiveGameCenterActivityRegistry
 
@@ -600,7 +672,7 @@ private final class LiveGameCenterActivityListener: NSObject, GKLocalPlayerListe
     }
 }
 
-@available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, visionOS 26.0, *)
 private struct SendableGameActivity: @unchecked Sendable {
     var value: GKGameActivity
 

@@ -29,13 +29,18 @@ public enum GameCenterSystemDashboardMode: Identifiable, Equatable, Sendable {
 
 public struct GameCenterSystemDashboardView: UIViewControllerRepresentable {
     private let mode: GameCenterSystemDashboardMode
+    private let onDismiss: (@MainActor () -> Void)?
 
-    public init(mode: GameCenterSystemDashboardMode) {
+    public init(
+        mode: GameCenterSystemDashboardMode,
+        onDismiss: (@MainActor () -> Void)? = nil
+    ) {
         self.mode = mode
+        self.onDismiss = onDismiss
     }
 
     public func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(onDismiss: onDismiss)
     }
 
     public func makeUIViewController(context: Context) -> GKGameCenterViewController {
@@ -63,8 +68,21 @@ public struct GameCenterSystemDashboardView: UIViewControllerRepresentable {
     public func updateUIViewController(_ uiViewController: GKGameCenterViewController, context: Context) {}
 
     public final class Coordinator: NSObject, GKGameCenterControllerDelegate {
+        private let onDismiss: (@MainActor () -> Void)?
+
+        init(onDismiss: (@MainActor () -> Void)?) {
+            self.onDismiss = onDismiss
+        }
+
         public func gameCenterViewControllerDidFinish(_ gameCenterViewController: GKGameCenterViewController) {
-            gameCenterViewController.dismiss(animated: true)
+            guard let onDismiss else {
+                gameCenterViewController.dismiss(animated: true)
+                return
+            }
+
+            Task { @MainActor in
+                onDismiss()
+            }
         }
     }
 }

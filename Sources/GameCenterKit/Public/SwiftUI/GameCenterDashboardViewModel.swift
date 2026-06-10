@@ -12,6 +12,7 @@ public final class GameCenterDashboardViewModel: ObservableObject {
 
     private let configuration: GameCenterConfiguration
     private let range: Range<Int>
+    private var refreshGeneration = 0
 
     @Dependency(\.gameCenterAuthenticationClient) private var authenticationClient
     @Dependency(\.gameCenterLeaderboardClient) private var leaderboardClient
@@ -29,30 +30,70 @@ public final class GameCenterDashboardViewModel: ObservableObject {
     }
 
     public func refresh() async {
+        refreshGeneration += 1
+        let generation = refreshGeneration
+        let requestedScope = selectedScope
+        let requestedPlayerScope = playerScope
+
         isLoading = true
         errorMessage = nil
 
         defer {
-            isLoading = false
+            if isCurrentRefresh(
+                generation: generation,
+                selectedScope: requestedScope,
+                playerScope: requestedPlayerScope
+            ) {
+                isLoading = false
+            }
         }
 
         do {
-            player = try? await authenticationClient.localPlayer()
+            let loadedPlayer = try? await authenticationClient.localPlayer()
 
-            guard let leaderboardID = configuration.leaderboardID(for: selectedScope) else {
-                throw GameCenterClientError.leaderboardNotConfigured(selectedScope)
+            guard let leaderboardID = configuration.leaderboardID(for: requestedScope) else {
+                throw GameCenterClientError.leaderboardNotConfigured(requestedScope)
             }
 
-            snapshot = try await leaderboardClient.loadLeaderboard(
+            let loadedSnapshot = try await leaderboardClient.loadLeaderboard(
                 GameCenterLeaderboardRequest(
                     leaderboardID: leaderboardID,
-                    rankingScope: selectedScope,
-                    playerScope: playerScope,
+                    rankingScope: requestedScope,
+                    playerScope: requestedPlayerScope,
                     range: range
                 )
             )
+
+            guard isCurrentRefresh(
+                generation: generation,
+                selectedScope: requestedScope,
+                playerScope: requestedPlayerScope
+            ) else {
+                return
+            }
+
+            player = loadedPlayer
+            snapshot = loadedSnapshot
         } catch {
+            guard isCurrentRefresh(
+                generation: generation,
+                selectedScope: requestedScope,
+                playerScope: requestedPlayerScope
+            ) else {
+                return
+            }
+
             errorMessage = String(describing: error)
         }
+    }
+
+    private func isCurrentRefresh(
+        generation: Int,
+        selectedScope: GameCenterRankingScope,
+        playerScope: GameCenterPlayerScope
+    ) -> Bool {
+        generation == refreshGeneration &&
+            selectedScope == self.selectedScope &&
+            playerScope == self.playerScope
     }
 }

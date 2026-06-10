@@ -51,7 +51,9 @@ public struct GameCenterNicknameView: View {
         }
         #if canImport(UIKit) && !os(watchOS)
         .sheet(isPresented: $showsProfile) {
-            GameCenterSystemDashboardView(mode: .profile)
+            GameCenterSystemDashboardView(mode: .profile) {
+                showsProfile = false
+            }
         }
         #endif
     }

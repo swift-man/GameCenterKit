@@ -55,6 +55,29 @@ final class GameCenterDependencyTests: XCTestCase {
         XCTAssertEqual(result.0, [expectedFriend])
         XCTAssertEqual(result.1, [expectedActivityDefinition])
     }
+
+    func testPreviewActivityLifecycleStoresStartedActivity() async throws {
+        let client = PreviewGameCenterClient()
+
+        let started = try await client.startGameActivity(
+            definitionID: "activity.score-attack",
+            partyCode: "ABCD"
+        )
+        let updated = try await client.updateGameActivityProperties(
+            activityID: started.id,
+            properties: ["round": "1"]
+        )
+        let paused = try await client.pauseGameActivity(activityID: started.id)
+        let resumed = try await client.resumeGameActivity(activityID: started.id)
+        let ended = try await client.endGameActivity(activityID: started.id)
+
+        XCTAssertEqual(updated.id, started.id)
+        XCTAssertEqual(updated.properties, ["round": "1"])
+        XCTAssertEqual(paused.state, .paused)
+        XCTAssertEqual(resumed.state, .active)
+        XCTAssertEqual(ended.state, .ended)
+        XCTAssertEqual(ended.partyCode, "ABCD")
+    }
 }
 
 private struct StubGameCenterClient: GameCenterClientProtocol {

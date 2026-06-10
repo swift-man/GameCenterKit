@@ -16,6 +16,7 @@ public struct PreviewGameCenterClient:
     public var challengeDefinitions: [GameCenterChallengeDefinition]
     public var activityDefinitions: [GameCenterGameActivityDefinition]
     public var activities: [String: GameCenterGameActivity]
+    private let activityStore: PreviewGameCenterActivityStore
 
     public init(
         player: GameCenterPlayer = .preview,
@@ -35,6 +36,7 @@ public struct PreviewGameCenterClient:
         self.challengeDefinitions = challengeDefinitions
         self.activityDefinitions = activityDefinitions
         self.activities = activities
+        self.activityStore = PreviewGameCenterActivityStore(activities: activities)
     }
 
     @MainActor
@@ -166,11 +168,11 @@ public struct PreviewGameCenterClient:
     }
 
     public func startGameActivity(definitionID: String, partyCode: String? = nil) async throws -> GameCenterGameActivity {
-        if let activity = activities.values.first(where: { $0.definitionID == definitionID }) {
+        if let activity = await activityStore.activity(definitionID: definitionID) {
             return activity
         }
 
-        return GameCenterGameActivity(
+        let activity = GameCenterGameActivity(
             id: "preview-activity-\(definitionID)",
             definitionID: definitionID,
             properties: [:],
@@ -179,38 +181,36 @@ public struct PreviewGameCenterClient:
             creationDate: Date(),
             startDate: Date()
         )
+        await activityStore.store(activity)
+        return activity
     }
 
     public func updateGameActivityProperties(activityID: String, properties: [String: String]) async throws -> GameCenterGameActivity {
-        var activity = try previewActivity(id: activityID)
-        activity.properties = properties
-        return activity
+        try await activityStore.updateProperties(id: activityID, properties: properties)
     }
 
-    public func setScore(_ score: Int, leaderboardID: String, activityID: String, context: Int = 0) async throws {}
+    public func setScore(_ score: Int, leaderboardID: String, activityID: String, context: Int = 0) async throws {
+        _ = try await activityStore.activity(id: activityID)
+    }
 
-    public func setAchievementProgress(_ percentComplete: Double, achievementID: String, activityID: String) async throws {}
+    public func setAchievementProgress(_ percentComplete: Double, achievementID: String, activityID: String) async throws {
+        _ = try await activityStore.activity(id: activityID)
+    }
 
-    public func setAchievementCompleted(achievementID: String, activityID: String) async throws {}
+    public func setAchievementCompleted(achievementID: String, activityID: String) async throws {
+        _ = try await activityStore.activity(id: activityID)
+    }
 
     public func pauseGameActivity(activityID: String) async throws -> GameCenterGameActivity {
-        var activity = try previewActivity(id: activityID)
-        activity.state = .paused
-        return activity
+        try await activityStore.pause(id: activityID)
     }
 
     public func resumeGameActivity(activityID: String) async throws -> GameCenterGameActivity {
-        var activity = try previewActivity(id: activityID)
-        activity.state = .active
-        activity.lastResumeDate = Date()
-        return activity
+        try await activityStore.resume(id: activityID)
     }
 
     public func endGameActivity(activityID: String) async throws -> GameCenterGameActivity {
-        var activity = try previewActivity(id: activityID)
-        activity.state = .ended
-        activity.endDate = Date()
-        return activity
+        try await activityStore.end(id: activityID)
     }
 
     public func setGameActivityHandler(_ handler: (@Sendable (GameCenterPlayer, GameCenterGameActivity) async -> Bool)?) async {}
@@ -359,12 +359,56 @@ extension GameCenterPlayer {
     )
 }
 
-private extension PreviewGameCenterClient {
-    func previewActivity(id: String) throws -> GameCenterGameActivity {
+private actor PreviewGameCenterActivityStore {
+    private var activities: [String: GameCenterGameActivity]
+
+    init(activities: [String: GameCenterGameActivity]) {
+        self.activities = activities
+    }
+
+    func activity(id: String) throws -> GameCenterGameActivity {
         guard let activity = activities[id] else {
             throw GameCenterClientError.activityNotFound(id)
         }
 
+        return activity
+    }
+
+    func activity(definitionID: String) -> GameCenterGameActivity? {
+        activities.values.first { $0.definitionID == definitionID }
+    }
+
+    func store(_ activity: GameCenterGameActivity) {
+        activities[activity.id] = activity
+    }
+
+    func updateProperties(id: String, properties: [String: String]) throws -> GameCenterGameActivity {
+        var activity = try activity(id: id)
+        activity.properties = properties
+        activities[id] = activity
+        return activity
+    }
+
+    func pause(id: String) throws -> GameCenterGameActivity {
+        var activity = try activity(id: id)
+        activity.state = .paused
+        activities[id] = activity
+        return activity
+    }
+
+    func resume(id: String) throws -> GameCenterGameActivity {
+        var activity = try activity(id: id)
+        activity.state = .active
+        activity.lastResumeDate = Date()
+        activities[id] = activity
+        return activity
+    }
+
+    func end(id: String) throws -> GameCenterGameActivity {
+        var activity = try activity(id: id)
+        activity.state = .ended
+        activity.endDate = Date()
+        activities[id] = activity
         return activity
     }
 }
