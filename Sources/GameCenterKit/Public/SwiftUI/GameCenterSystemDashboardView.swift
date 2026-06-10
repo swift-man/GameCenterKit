@@ -28,6 +28,8 @@ public enum GameCenterSystemDashboardMode: Identifiable, Equatable, Sendable {
 }
 
 public struct GameCenterSystemDashboardView: UIViewControllerRepresentable {
+    @Environment(\.dismiss) private var dismiss
+
     private let mode: GameCenterSystemDashboardMode
     private let onDismiss: (@MainActor () -> Void)?
 
@@ -40,7 +42,7 @@ public struct GameCenterSystemDashboardView: UIViewControllerRepresentable {
     }
 
     public func makeCoordinator() -> Coordinator {
-        Coordinator(onDismiss: onDismiss)
+        Coordinator(onDismiss: onDismiss, dismiss: dismiss)
     }
 
     public func makeUIViewController(context: Context) -> GKGameCenterViewController {
@@ -65,23 +67,34 @@ public struct GameCenterSystemDashboardView: UIViewControllerRepresentable {
         return viewController
     }
 
-    public func updateUIViewController(_ uiViewController: GKGameCenterViewController, context: Context) {}
+    public func updateUIViewController(_ uiViewController: GKGameCenterViewController, context: Context) {
+        context.coordinator.update(onDismiss: onDismiss, dismiss: dismiss)
+    }
 
     public final class Coordinator: NSObject, GKGameCenterControllerDelegate {
-        private let onDismiss: (@MainActor () -> Void)?
+        private var onDismiss: (@MainActor () -> Void)?
+        private var dismiss: DismissAction
 
-        init(onDismiss: (@MainActor () -> Void)?) {
+        init(onDismiss: (@MainActor () -> Void)?, dismiss: DismissAction) {
             self.onDismiss = onDismiss
+            self.dismiss = dismiss
+        }
+
+        func update(onDismiss: (@MainActor () -> Void)?, dismiss: DismissAction) {
+            self.onDismiss = onDismiss
+            self.dismiss = dismiss
         }
 
         public func gameCenterViewControllerDidFinish(_ gameCenterViewController: GKGameCenterViewController) {
-            guard let onDismiss else {
-                gameCenterViewController.dismiss(animated: true)
-                return
-            }
+            let onDismiss = onDismiss
+            let dismiss = dismiss
 
             Task { @MainActor in
-                onDismiss()
+                if let onDismiss {
+                    onDismiss()
+                } else {
+                    dismiss()
+                }
             }
         }
     }

@@ -498,6 +498,7 @@ private final class LiveGameCenterAuthenticationCoordinator {
                 Task { @MainActor in
                     if let viewController {
                         guard let presenter else {
+                            GKLocalPlayer.local.authenticateHandler = nil
                             state.resume(throwing: GameCenterClientError.authenticationPresentationRequired)
                             return
                         }
@@ -507,15 +508,18 @@ private final class LiveGameCenterAuthenticationCoordinator {
                     }
 
                     if let error {
+                        GKLocalPlayer.local.authenticateHandler = nil
                         state.resume(throwing: error)
                         return
                     }
 
                     guard GKLocalPlayer.local.isAuthenticated else {
+                        GKLocalPlayer.local.authenticateHandler = nil
                         state.resume(throwing: GameCenterClientError.notAuthenticated)
                         return
                     }
 
+                    GKLocalPlayer.local.authenticateHandler = nil
                     state.resume(returning: GameCenterPlayer(localPlayer: GKLocalPlayer.local))
                 }
             }
@@ -631,10 +635,9 @@ private actor LiveGameCenterActivityRegistry {
 
     func handle(
         player: GameCenterPlayer,
-        activity: GameCenterGameActivity,
         rawActivity: SendableGameActivity
     ) async -> Bool {
-        _ = store(rawActivity)
+        let activity = store(rawActivity)
         guard let handler else {
             return false
         }
@@ -658,13 +661,11 @@ private final class LiveGameCenterActivityListener: NSObject, GKLocalPlayerListe
     ) {
         let registry = registry
         let player = GameCenterPlayer(player: player)
-        let activitySnapshot = GameCenterGameActivity(activity: activity)
         let rawActivity = SendableGameActivity(activity)
 
         Task {
             let handled = await registry.handle(
                 player: player,
-                activity: activitySnapshot,
                 rawActivity: rawActivity
             )
             completionHandler(handled)

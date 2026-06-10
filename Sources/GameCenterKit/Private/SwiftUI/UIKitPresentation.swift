@@ -2,6 +2,7 @@
 import UIKit
 
 extension UIApplication {
+    @MainActor
     var gameCenterTopMostViewController: UIViewController? {
         connectedScenes
             .compactMap { $0 as? UIWindowScene }
@@ -13,6 +14,7 @@ extension UIApplication {
 }
 
 extension UIViewController {
+    @MainActor
     var gameCenterTopMostPresentedViewController: UIViewController {
         if let presentedViewController {
             return presentedViewController.gameCenterTopMostPresentedViewController
