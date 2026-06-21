@@ -23,6 +23,8 @@ public enum GameCenterClientError: Error, Equatable, Sendable {
     case authenticationPresentationRequired
     case leaderboardNotConfigured(GameCenterRankingScope)
     case leaderboardNotFound(String)
+    case playerNotFound(String)
+    case playerPhotoUnavailable(String)
     case challengeNotFound(String)
     case activityNotFound(String)
     case unsupportedPlatform(String)
@@ -74,6 +76,11 @@ public protocol GameCenterFriendsClientProtocol: Sendable {
     #endif
 }
 
+public protocol GameCenterPlayerPhotoClientProtocol: Sendable {
+    func loadLocalPlayerPhoto(size: GameCenterPlayerPhotoSize) async throws -> GameCenterPlayerPhoto
+    func loadFriendPhoto(identifiedBy identifier: String, size: GameCenterPlayerPhotoSize) async throws -> GameCenterPlayerPhoto
+}
+
 public protocol GameCenterChallengeClientProtocol: Sendable {
     func loadChallengeDefinitions() async throws -> [GameCenterChallengeDefinition]
     func hasActiveChallenges(challengeDefinitionID: String) async throws -> Bool
@@ -121,5 +128,15 @@ extension GameCenterAchievementClientProtocol {
                 showsCompletionBanner: showsCompletionBanner
             )
         )
+    }
+}
+
+extension GameCenterPlayerPhotoClientProtocol {
+    public func loadLocalPlayerPhoto() async throws -> GameCenterPlayerPhoto {
+        try await loadLocalPlayerPhoto(size: .normal)
+    }
+
+    public func loadFriendPhoto(identifiedBy identifier: String) async throws -> GameCenterPlayerPhoto {
+        try await loadFriendPhoto(identifiedBy: identifier, size: .normal)
     }
 }

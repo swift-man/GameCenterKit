@@ -5,6 +5,7 @@ public struct PreviewGameCenterClient:
     GameCenterRecurringLeaderboardClientProtocol,
     GameCenterAccessPointClientProtocol,
     GameCenterFriendsClientProtocol,
+    GameCenterPlayerPhotoClientProtocol,
     GameCenterChallengeClientProtocol,
     GameCenterActivityClientProtocol
 {
@@ -13,6 +14,7 @@ public struct PreviewGameCenterClient:
     public var achievements: [GameCenterAchievementProgress]
     public var leaderboards: [GameCenterLeaderboard]
     public var friends: [GameCenterPlayer]
+    public var playerPhotos: [GameCenterPlayerPhotoRequest: GameCenterPlayerPhoto]
     public var challengeDefinitions: [GameCenterChallengeDefinition]
     public var activityDefinitions: [GameCenterGameActivityDefinition]
     private let activityStore: PreviewGameCenterActivityStore
@@ -29,6 +31,7 @@ public struct PreviewGameCenterClient:
         achievements: [GameCenterAchievementProgress] = [],
         leaderboards: [GameCenterLeaderboard] = [],
         friends: [GameCenterPlayer] = [],
+        playerPhotos: [GameCenterPlayerPhotoRequest: GameCenterPlayerPhoto] = [:],
         challengeDefinitions: [GameCenterChallengeDefinition] = [],
         activityDefinitions: [GameCenterGameActivityDefinition] = [],
         activities: [String: GameCenterGameActivity] = [:]
@@ -38,6 +41,7 @@ public struct PreviewGameCenterClient:
         self.achievements = achievements
         self.leaderboards = leaderboards
         self.friends = friends
+        self.playerPhotos = playerPhotos
         self.challengeDefinitions = challengeDefinitions
         self.activityDefinitions = activityDefinitions
         self.activityStore = PreviewGameCenterActivityStore(activities: activities)
@@ -143,6 +147,22 @@ public struct PreviewGameCenterClient:
         friends.filter { identifiers.contains($0.gamePlayerID) || identifiers.contains($0.teamPlayerID) }
     }
 
+    public func loadLocalPlayerPhoto(size: GameCenterPlayerPhotoSize) async throws -> GameCenterPlayerPhoto {
+        try playerPhoto(playerID: player.gamePlayerID, size: size)
+    }
+
+    public func loadFriendPhoto(identifiedBy identifier: String, size: GameCenterPlayerPhotoSize) async throws -> GameCenterPlayerPhoto {
+        if let photo = playerPhotos[GameCenterPlayerPhotoRequest(playerID: identifier, size: size)] {
+            return photo
+        }
+
+        guard let friend = friends.first(where: { $0.gamePlayerID == identifier || $0.teamPlayerID == identifier }) else {
+            throw GameCenterClientError.playerNotFound(identifier)
+        }
+
+        return try playerPhoto(playerID: friend.gamePlayerID, size: size)
+    }
+
     #if canImport(UIKit) || canImport(AppKit)
     @MainActor
     public func presentFriendRequestCreator() async throws {}
@@ -218,6 +238,15 @@ public struct PreviewGameCenterClient:
     }
 
     public func setGameActivityHandler(_ handler: (@Sendable (GameCenterPlayer, GameCenterGameActivity) async -> Bool)?) async {}
+
+    private func playerPhoto(playerID: String, size: GameCenterPlayerPhotoSize) throws -> GameCenterPlayerPhoto {
+        let request = GameCenterPlayerPhotoRequest(playerID: playerID, size: size)
+        guard let photo = playerPhotos[request] else {
+            throw GameCenterClientError.playerPhotoUnavailable(playerID)
+        }
+
+        return photo
+    }
 }
 
 public struct UnimplementedGameCenterClient:
@@ -225,6 +254,7 @@ public struct UnimplementedGameCenterClient:
     GameCenterRecurringLeaderboardClientProtocol,
     GameCenterAccessPointClientProtocol,
     GameCenterFriendsClientProtocol,
+    GameCenterPlayerPhotoClientProtocol,
     GameCenterChallengeClientProtocol,
     GameCenterActivityClientProtocol
 {
@@ -288,6 +318,14 @@ public struct UnimplementedGameCenterClient:
     }
 
     public func loadFriends(identifiedBy identifiers: [String]) async throws -> [GameCenterPlayer] {
+        throw GameCenterClientError.notAuthenticated
+    }
+
+    public func loadLocalPlayerPhoto(size: GameCenterPlayerPhotoSize) async throws -> GameCenterPlayerPhoto {
+        throw GameCenterClientError.notAuthenticated
+    }
+
+    public func loadFriendPhoto(identifiedBy identifier: String, size: GameCenterPlayerPhotoSize) async throws -> GameCenterPlayerPhoto {
         throw GameCenterClientError.notAuthenticated
     }
 

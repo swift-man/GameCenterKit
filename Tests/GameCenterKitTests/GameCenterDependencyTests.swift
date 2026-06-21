@@ -1,4 +1,5 @@
 import Dependencies
+import Foundation
 import XCTest
 @testable import GameCenterKit
 
@@ -54,6 +55,58 @@ final class GameCenterDependencyTests: XCTestCase {
 
         XCTAssertEqual(result.0, [expectedFriend])
         XCTAssertEqual(result.1, [expectedActivityDefinition])
+    }
+
+    func testOverridesPlayerPhotoDependency() async throws {
+        let expectedPhoto = GameCenterPlayerPhoto(
+            playerID: GameCenterPlayer.preview.gamePlayerID,
+            size: .small,
+            data: Data([0x01, 0x02, 0x03])
+        )
+        let preview = PreviewGameCenterClient(
+            playerPhotos: [
+                GameCenterPlayerPhotoRequest(
+                    playerID: GameCenterPlayer.preview.gamePlayerID,
+                    size: .small
+                ): expectedPhoto,
+            ]
+        )
+
+        let photo = try await withDependencies {
+            $0.gameCenterPlayerPhotoClient = preview
+        } operation: {
+            @Dependency(\.gameCenterPlayerPhotoClient) var photoClient
+            return try await photoClient.loadLocalPlayerPhoto(size: .small)
+        }
+
+        XCTAssertEqual(photo, expectedPhoto)
+    }
+
+    func testPreviewLoadsFriendPhotoByTeamPlayerID() async throws {
+        let friend = GameCenterPlayer(
+            gamePlayerID: "friend-player",
+            teamPlayerID: "friend-team",
+            displayName: "Friend Player",
+            isAuthenticated: false
+        )
+        let expectedPhoto = GameCenterPlayerPhoto(
+            playerID: friend.gamePlayerID,
+            size: .normal,
+            data: Data([0x04, 0x05, 0x06])
+        )
+        let client = PreviewGameCenterClient(
+            friends: [friend],
+            playerPhotos: [
+                GameCenterPlayerPhotoRequest(
+                    playerID: friend.gamePlayerID,
+                    size: .normal
+                ): expectedPhoto,
+            ]
+        )
+
+        let photo = try await client.loadFriendPhoto(identifiedBy: friend.teamPlayerID)
+
+        XCTAssertEqual(photo, expectedPhoto)
     }
 
     func testPreviewActivityLifecycleStoresStartedActivity() async throws {

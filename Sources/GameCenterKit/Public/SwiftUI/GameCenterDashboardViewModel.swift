@@ -4,6 +4,7 @@ import Foundation
 @MainActor
 public final class GameCenterDashboardViewModel: ObservableObject {
     @Published public private(set) var player: GameCenterPlayer?
+    @Published public private(set) var playerPhoto: GameCenterPlayerPhoto?
     @Published public private(set) var snapshot: GameCenterLeaderboardSnapshot?
     @Published public private(set) var isLoading = false
     @Published public private(set) var errorMessage: String?
@@ -16,6 +17,7 @@ public final class GameCenterDashboardViewModel: ObservableObject {
 
     @Dependency(\.gameCenterAuthenticationClient) private var authenticationClient
     @Dependency(\.gameCenterLeaderboardClient) private var leaderboardClient
+    @Dependency(\.gameCenterPlayerPhotoClient) private var playerPhotoClient
 
     public init(
         configuration: GameCenterConfiguration,
@@ -50,6 +52,7 @@ public final class GameCenterDashboardViewModel: ObservableObject {
 
         do {
             let loadedPlayer = try? await authenticationClient.localPlayer()
+            let loadedPlayerPhoto = try? await playerPhotoClient.loadLocalPlayerPhoto(size: .small)
 
             guard let leaderboardID = configuration.leaderboardID(for: requestedScope) else {
                 throw GameCenterClientError.leaderboardNotConfigured(requestedScope)
@@ -73,6 +76,7 @@ public final class GameCenterDashboardViewModel: ObservableObject {
             }
 
             player = loadedPlayer
+            playerPhoto = loadedPlayerPhoto
             snapshot = loadedSnapshot
         } catch {
             guard isCurrentRefresh(

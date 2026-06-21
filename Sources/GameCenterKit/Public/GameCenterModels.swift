@@ -1,5 +1,13 @@
 import Foundation
 
+#if canImport(AppKit)
+import AppKit
+#endif
+
+#if canImport(UIKit)
+import UIKit
+#endif
+
 public struct GameCenterPlayer: Equatable, Sendable {
     public var gamePlayerID: String
     public var teamPlayerID: String
@@ -27,6 +35,54 @@ public struct GameCenterPlayer: Equatable, Sendable {
         self.isPersonalizedCommunicationRestricted = isPersonalizedCommunicationRestricted
     }
 }
+
+public enum GameCenterPlayerPhotoSize: String, CaseIterable, Hashable, Sendable {
+    case small
+    case normal
+}
+
+public struct GameCenterPlayerPhotoRequest: Hashable, Sendable {
+    public var playerID: String
+    public var size: GameCenterPlayerPhotoSize
+
+    public init(
+        playerID: String,
+        size: GameCenterPlayerPhotoSize = .normal
+    ) {
+        self.playerID = playerID
+        self.size = size
+    }
+}
+
+public struct GameCenterPlayerPhoto: Equatable, Sendable {
+    public var playerID: String
+    public var size: GameCenterPlayerPhotoSize
+    public var data: Data
+
+    public init(
+        playerID: String,
+        size: GameCenterPlayerPhotoSize,
+        data: Data
+    ) {
+        self.playerID = playerID
+        self.size = size
+        self.data = data
+    }
+}
+
+#if canImport(UIKit)
+extension GameCenterPlayerPhoto {
+    public var uiImage: UIImage? {
+        UIImage(data: data)
+    }
+}
+#elseif canImport(AppKit)
+extension GameCenterPlayerPhoto {
+    public var nsImage: NSImage? {
+        NSImage(data: data)
+    }
+}
+#endif
 
 public struct GameCenterLeaderboardRequest: Equatable, Sendable {
     public var leaderboardID: String
