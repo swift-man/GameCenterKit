@@ -42,6 +42,12 @@ enum GameCenterFriendsClientDependencyKey: DependencyKey {
     static let testValue: any GameCenterFriendsClientProtocol = UnimplementedGameCenterClient()
 }
 
+enum GameCenterPlayerPhotoClientDependencyKey: DependencyKey {
+    static let liveValue: any GameCenterPlayerPhotoClientProtocol = LiveGameCenterClient()
+    static let previewValue: any GameCenterPlayerPhotoClientProtocol = PreviewGameCenterClient()
+    static let testValue: any GameCenterPlayerPhotoClientProtocol = UnimplementedGameCenterClient()
+}
+
 enum GameCenterChallengeClientDependencyKey: DependencyKey {
     static let liveValue: any GameCenterChallengeClientProtocol = LiveGameCenterClient()
     static let previewValue: any GameCenterChallengeClientProtocol = PreviewGameCenterClient()

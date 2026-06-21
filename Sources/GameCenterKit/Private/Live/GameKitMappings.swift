@@ -24,6 +24,17 @@ extension GameCenterPlayer {
     }
 }
 
+extension GameCenterPlayerPhotoSize {
+    var gameKitPhotoSize: GKPlayer.PhotoSize {
+        switch self {
+        case .small:
+            return .small
+        case .normal:
+            return .normal
+        }
+    }
+}
+
 extension GameCenterLeaderboardEntry {
     init(entry: GKLeaderboard.Entry) {
         self.init(

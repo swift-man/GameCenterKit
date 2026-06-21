@@ -1,6 +1,10 @@
 import Foundation
 @preconcurrency import GameKit
 
+#if canImport(AppKit)
+import AppKit
+#endif
+
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -10,6 +14,7 @@ struct LiveGameCenterClient:
     GameCenterRecurringLeaderboardClientProtocol,
     GameCenterAccessPointClientProtocol,
     GameCenterFriendsClientProtocol,
+    GameCenterPlayerPhotoClientProtocol,
     GameCenterChallengeClientProtocol,
     GameCenterActivityClientProtocol
 {
@@ -250,6 +255,45 @@ struct LiveGameCenterClient:
         }
     }
 
+    func loadLocalPlayerPhoto(size: GameCenterPlayerPhotoSize) async throws -> GameCenterPlayerPhoto {
+        guard GKLocalPlayer.local.isAuthenticated else {
+            throw GameCenterClientError.notAuthenticated
+        }
+
+        return try await loadPhoto(
+            for: GKLocalPlayer.local,
+            playerID: GKLocalPlayer.local.gamePlayerID,
+            size: size
+        )
+    }
+
+    func loadFriendPhoto(identifiedBy identifier: String, size: GameCenterPlayerPhotoSize) async throws -> GameCenterPlayerPhoto {
+        guard GKLocalPlayer.local.isAuthenticated else {
+            throw GameCenterClientError.notAuthenticated
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            GKLocalPlayer.local.loadFriends(identifiedBy: [identifier]) { players, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let player = players?.first else {
+                    continuation.resume(throwing: GameCenterClientError.playerNotFound(identifier))
+                    return
+                }
+
+                loadPhoto(
+                    for: player,
+                    playerID: player.gamePlayerID,
+                    size: size,
+                    continuation: continuation
+                )
+            }
+        }
+    }
+
     #if canImport(UIKit) && !os(watchOS)
     @MainActor
     func presentFriendRequestCreator() async throws {
@@ -420,6 +464,74 @@ struct LiveGameCenterClient:
 }
 
 private extension LiveGameCenterClient {
+    func loadPhoto(
+        for player: GKPlayer,
+        playerID: String,
+        size: GameCenterPlayerPhotoSize
+    ) async throws -> GameCenterPlayerPhoto {
+        try await withCheckedThrowingContinuation { continuation in
+            loadPhoto(
+                for: player,
+                playerID: playerID,
+                size: size,
+                continuation: continuation
+            )
+        }
+    }
+
+    func loadPhoto(
+        for player: GKPlayer,
+        playerID: String,
+        size: GameCenterPlayerPhotoSize,
+        continuation: CheckedContinuation<GameCenterPlayerPhoto, Error>
+    ) {
+        #if canImport(UIKit)
+        player.loadPhoto(for: size.gameKitPhotoSize) { photo, error in
+            if let error {
+                continuation.resume(throwing: error)
+                return
+            }
+
+            guard let data = photo?.pngData() else {
+                continuation.resume(throwing: GameCenterClientError.playerPhotoUnavailable(playerID))
+                return
+            }
+
+            continuation.resume(
+                returning: GameCenterPlayerPhoto(
+                    playerID: playerID,
+                    size: size,
+                    data: data
+                )
+            )
+        }
+        #elseif canImport(AppKit)
+        player.loadPhoto(for: size.gameKitPhotoSize) { photo, error in
+            if let error {
+                continuation.resume(throwing: error)
+                return
+            }
+
+            guard let data = photo?.tiffRepresentation else {
+                continuation.resume(throwing: GameCenterClientError.playerPhotoUnavailable(playerID))
+                return
+            }
+
+            continuation.resume(
+                returning: GameCenterPlayerPhoto(
+                    playerID: playerID,
+                    size: size,
+                    data: data
+                )
+            )
+        }
+        #else
+        continuation.resume(
+            throwing: GameCenterClientError.unsupportedPlatform("Player photos require UIKit or AppKit.")
+        )
+        #endif
+    }
+
     @MainActor
     func triggerAccessPoint() async {
         await withCheckedContinuation { continuation in

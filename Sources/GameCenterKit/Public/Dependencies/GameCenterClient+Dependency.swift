@@ -36,6 +36,11 @@ extension DependencyValues {
         set { self[GameCenterFriendsClientDependencyKey.self] = newValue }
     }
 
+    public var gameCenterPlayerPhotoClient: any GameCenterPlayerPhotoClientProtocol {
+        get { self[GameCenterPlayerPhotoClientDependencyKey.self] }
+        set { self[GameCenterPlayerPhotoClientDependencyKey.self] = newValue }
+    }
+
     public var gameCenterChallengeClient: any GameCenterChallengeClientProtocol {
         get { self[GameCenterChallengeClientDependencyKey.self] }
         set { self[GameCenterChallengeClientDependencyKey.self] = newValue }
