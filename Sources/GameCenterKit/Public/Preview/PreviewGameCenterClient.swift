@@ -152,7 +152,7 @@ public struct PreviewGameCenterClient:
     }
 
     public func loadFriendPhoto(identifiedBy identifier: String, size: GameCenterPlayerPhotoSize) async throws -> GameCenterPlayerPhoto {
-        if let photo = playerPhotos[GameCenterPlayerPhotoRequest(playerID: identifier, size: size)] {
+        if let photo = playerPhotoIfAvailable(playerID: identifier, size: size) {
             return photo
         }
 
@@ -160,7 +160,15 @@ public struct PreviewGameCenterClient:
             throw GameCenterClientError.playerNotFound(identifier)
         }
 
-        return try playerPhoto(playerID: friend.gamePlayerID, size: size)
+        if let photo = playerPhotoIfAvailable(playerID: friend.gamePlayerID, size: size) {
+            return photo
+        }
+
+        if let photo = playerPhotoIfAvailable(playerID: friend.teamPlayerID, size: size) {
+            return photo
+        }
+
+        throw GameCenterClientError.playerPhotoUnavailable(friend.gamePlayerID)
     }
 
     #if canImport(UIKit) || canImport(AppKit)
@@ -240,12 +248,16 @@ public struct PreviewGameCenterClient:
     public func setGameActivityHandler(_ handler: (@Sendable (GameCenterPlayer, GameCenterGameActivity) async -> Bool)?) async {}
 
     private func playerPhoto(playerID: String, size: GameCenterPlayerPhotoSize) throws -> GameCenterPlayerPhoto {
-        let request = GameCenterPlayerPhotoRequest(playerID: playerID, size: size)
-        guard let photo = playerPhotos[request] else {
+        guard let photo = playerPhotoIfAvailable(playerID: playerID, size: size) else {
             throw GameCenterClientError.playerPhotoUnavailable(playerID)
         }
 
         return photo
+    }
+
+    private func playerPhotoIfAvailable(playerID: String, size: GameCenterPlayerPhotoSize) -> GameCenterPlayerPhoto? {
+        let request = GameCenterPlayerPhotoRequest(playerID: playerID, size: size)
+        return playerPhotos[request]
     }
 }
 

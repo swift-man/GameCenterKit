@@ -65,14 +65,28 @@ public struct GameCenterNicknameView: View {
         #endif
     }
 
+    @MainActor
     private func loadPlayer() async {
         do {
             player = try await authenticationClient.localPlayer()
-            playerPhoto = try? await playerPhotoClient.loadLocalPlayerPhoto(size: .small)
+            playerPhoto = try await loadLocalPlayerPhotoIfAvailable()
             errorMessage = nil
+        } catch is CancellationError {
+            return
         } catch {
+            player = nil
             playerPhoto = nil
             errorMessage = String(describing: error)
+        }
+    }
+
+    private func loadLocalPlayerPhotoIfAvailable() async throws -> GameCenterPlayerPhoto? {
+        do {
+            return try await playerPhotoClient.loadLocalPlayerPhoto(size: .small)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return nil
         }
     }
 }

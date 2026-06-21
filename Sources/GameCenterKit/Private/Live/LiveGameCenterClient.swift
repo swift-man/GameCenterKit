@@ -268,7 +268,11 @@ struct LiveGameCenterClient:
     }
 
     func loadFriendPhoto(identifiedBy identifier: String, size: GameCenterPlayerPhotoSize) async throws -> GameCenterPlayerPhoto {
-        try await withCheckedThrowingContinuation { continuation in
+        guard GKLocalPlayer.local.isAuthenticated else {
+            throw GameCenterClientError.notAuthenticated
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
             GKLocalPlayer.local.loadFriends(identifiedBy: [identifier]) { players, error in
                 if let error {
                     continuation.resume(throwing: error)
