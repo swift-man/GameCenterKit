@@ -1,4 +1,5 @@
 import Dependencies
+import Foundation
 import XCTest
 @testable import GameCenterKit
 
@@ -56,6 +57,85 @@ final class GameCenterDependencyTests: XCTestCase {
         XCTAssertEqual(result.1, [expectedActivityDefinition])
     }
 
+    func testOverridesPlayerPhotoDependency() async throws {
+        let expectedPhoto = GameCenterPlayerPhoto(
+            playerID: GameCenterPlayer.preview.gamePlayerID,
+            size: .small,
+            data: Data([0x01, 0x02, 0x03])
+        )
+        let preview = PreviewGameCenterClient(
+            playerPhotos: [
+                GameCenterPlayerPhotoRequest(
+                    playerID: GameCenterPlayer.preview.gamePlayerID,
+                    size: .small
+                ): expectedPhoto,
+            ]
+        )
+
+        let photo = try await withDependencies {
+            $0.gameCenterPlayerPhotoClient = preview
+        } operation: {
+            @Dependency(\.gameCenterPlayerPhotoClient) var photoClient
+            return try await photoClient.loadLocalPlayerPhoto(size: .small)
+        }
+
+        XCTAssertEqual(photo, expectedPhoto)
+    }
+
+    func testPreviewLoadsFriendPhotoByTeamPlayerID() async throws {
+        let friend = GameCenterPlayer(
+            gamePlayerID: "friend-player",
+            teamPlayerID: "friend-team",
+            displayName: "Friend Player",
+            isAuthenticated: false
+        )
+        let expectedPhoto = GameCenterPlayerPhoto(
+            playerID: friend.gamePlayerID,
+            size: .normal,
+            data: Data([0x04, 0x05, 0x06])
+        )
+        let client = PreviewGameCenterClient(
+            friends: [friend],
+            playerPhotos: [
+                GameCenterPlayerPhotoRequest(
+                    playerID: friend.gamePlayerID,
+                    size: .normal
+                ): expectedPhoto,
+            ]
+        )
+
+        let photo = try await client.loadFriendPhoto(identifiedBy: friend.teamPlayerID)
+
+        XCTAssertEqual(photo, expectedPhoto)
+    }
+
+    func testPreviewLoadsFriendPhotoByGamePlayerIDFromTeamPlayerPhoto() async throws {
+        let friend = GameCenterPlayer(
+            gamePlayerID: "friend-player",
+            teamPlayerID: "friend-team",
+            displayName: "Friend Player",
+            isAuthenticated: false
+        )
+        let expectedPhoto = GameCenterPlayerPhoto(
+            playerID: friend.teamPlayerID,
+            size: .small,
+            data: Data([0x07, 0x08, 0x09])
+        )
+        let client = PreviewGameCenterClient(
+            friends: [friend],
+            playerPhotos: [
+                GameCenterPlayerPhotoRequest(
+                    playerID: friend.teamPlayerID,
+                    size: .small
+                ): expectedPhoto,
+            ]
+        )
+
+        let photo = try await client.loadFriendPhoto(identifiedBy: friend.gamePlayerID, size: .small)
+
+        XCTAssertEqual(photo, expectedPhoto)
+    }
+
     func testPreviewActivityLifecycleStoresStartedActivity() async throws {
         let client = PreviewGameCenterClient()
 
@@ -101,12 +181,23 @@ final class GameCenterDependencyTests: XCTestCase {
             ]
         )
         let preview = PreviewGameCenterClient(
-            snapshots: ["daily-id": dailySnapshot]
+            snapshots: ["daily-id": dailySnapshot],
+            playerPhotos: [
+                GameCenterPlayerPhotoRequest(
+                    playerID: GameCenterPlayer.preview.gamePlayerID,
+                    size: .small
+                ): GameCenterPlayerPhoto(
+                    playerID: GameCenterPlayer.preview.gamePlayerID,
+                    size: .small,
+                    data: Data([0x01, 0x02, 0x03])
+                ),
+            ]
         )
 
         await withDependencies {
             $0.gameCenterAuthenticationClient = preview
             $0.gameCenterLeaderboardClient = preview
+            $0.gameCenterPlayerPhotoClient = preview
         } operation: {
             let model = GameCenterDashboardViewModel(
                 configuration: GameCenterConfiguration(
@@ -115,11 +206,15 @@ final class GameCenterDependencyTests: XCTestCase {
             )
 
             await model.refresh()
+            XCTAssertEqual(model.player, GameCenterPlayer.preview)
+            XCTAssertNotNil(model.playerPhoto)
             XCTAssertEqual(model.snapshot, dailySnapshot)
 
             model.selectedScope = .weekly
             await model.refresh()
 
+            XCTAssertNil(model.player)
+            XCTAssertNil(model.playerPhoto)
             XCTAssertNil(model.snapshot)
             XCTAssertNotNil(model.errorMessage)
         }

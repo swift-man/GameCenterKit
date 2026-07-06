@@ -4,6 +4,7 @@ import Foundation
 @MainActor
 public final class GameCenterDashboardViewModel: ObservableObject {
     @Published public private(set) var player: GameCenterPlayer?
+    @Published public private(set) var playerPhoto: GameCenterPlayerPhoto?
     @Published public private(set) var snapshot: GameCenterLeaderboardSnapshot?
     @Published public private(set) var isLoading = false
     @Published public private(set) var errorMessage: String?
@@ -16,6 +17,7 @@ public final class GameCenterDashboardViewModel: ObservableObject {
 
     @Dependency(\.gameCenterAuthenticationClient) private var authenticationClient
     @Dependency(\.gameCenterLeaderboardClient) private var leaderboardClient
+    @Dependency(\.gameCenterPlayerPhotoClient) private var playerPhotoClient
 
     public init(
         configuration: GameCenterConfiguration,
@@ -49,7 +51,8 @@ public final class GameCenterDashboardViewModel: ObservableObject {
         }
 
         do {
-            let loadedPlayer = try? await authenticationClient.localPlayer()
+            let loadedPlayer = try await loadLocalPlayerIfAvailable()
+            let loadedPlayerPhoto = try await loadLocalPlayerPhotoIfAvailable()
 
             guard let leaderboardID = configuration.leaderboardID(for: requestedScope) else {
                 throw GameCenterClientError.leaderboardNotConfigured(requestedScope)
@@ -73,7 +76,10 @@ public final class GameCenterDashboardViewModel: ObservableObject {
             }
 
             player = loadedPlayer
+            playerPhoto = loadedPlayerPhoto
             snapshot = loadedSnapshot
+        } catch is CancellationError {
+            return
         } catch {
             guard isCurrentRefresh(
                 generation: generation,
@@ -83,6 +89,8 @@ public final class GameCenterDashboardViewModel: ObservableObject {
                 return
             }
 
+            player = nil
+            playerPhoto = nil
             snapshot = nil
             errorMessage = String(describing: error)
         }
@@ -96,5 +104,25 @@ public final class GameCenterDashboardViewModel: ObservableObject {
         generation == refreshGeneration &&
             selectedScope == self.selectedScope &&
             playerScope == self.playerScope
+    }
+
+    private func loadLocalPlayerIfAvailable() async throws -> GameCenterPlayer? {
+        do {
+            return try await authenticationClient.localPlayer()
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return nil
+        }
+    }
+
+    private func loadLocalPlayerPhotoIfAvailable() async throws -> GameCenterPlayerPhoto? {
+        do {
+            return try await playerPhotoClient.loadLocalPlayerPhoto(size: .small)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return nil
+        }
     }
 }

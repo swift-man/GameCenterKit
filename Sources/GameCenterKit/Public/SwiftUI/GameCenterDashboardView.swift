@@ -63,6 +63,8 @@ public struct GameCenterDashboardView: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
+            GameCenterPlayerAvatarView(photo: model.playerPhoto)
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(model.player?.displayName ?? "Game Center")
                     .font(.headline)
