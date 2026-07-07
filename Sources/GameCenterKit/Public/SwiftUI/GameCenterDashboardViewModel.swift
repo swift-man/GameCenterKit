@@ -8,7 +8,13 @@ public final class GameCenterDashboardViewModel: ObservableObject {
     @Published public private(set) var snapshot: GameCenterLeaderboardSnapshot?
     @Published public private(set) var isLoading = false
     @Published public private(set) var errorMessage: String?
-    @Published public var selectedScope: GameCenterRankingScope
+    @Published public var selectedScope: GameCenterRankingScope {
+        didSet {
+            if selectedScope == .monthly {
+                selectedScope = .allTime
+            }
+        }
+    }
     @Published public var playerScope: GameCenterPlayerScope
 
     private let configuration: GameCenterConfiguration
@@ -26,7 +32,7 @@ public final class GameCenterDashboardViewModel: ObservableObject {
         range: Range<Int> = 1..<51
     ) {
         self.configuration = configuration
-        self.selectedScope = selectedScope
+        self.selectedScope = selectedScope.normalizedForDashboardSelection
         self.playerScope = playerScope
         self.range = range
     }
@@ -123,6 +129,17 @@ public final class GameCenterDashboardViewModel: ObservableObject {
             throw CancellationError()
         } catch {
             return nil
+        }
+    }
+}
+
+private extension GameCenterRankingScope {
+    var normalizedForDashboardSelection: GameCenterRankingScope {
+        switch self {
+        case .monthly:
+            return .allTime
+        case .daily, .weekly, .allTime:
+            return self
         }
     }
 }

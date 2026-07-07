@@ -13,7 +13,14 @@ public struct GameCenterConfiguration: Equatable, Sendable {
     }
 
     public func leaderboardID(for scope: GameCenterRankingScope) -> String? {
-        leaderboardIDs[scope]
+        switch scope {
+        case .allTime:
+            return leaderboardIDs[.allTime] ?? leaderboardIDs[.monthly]
+        case .monthly:
+            return leaderboardIDs[.monthly] ?? leaderboardIDs[.allTime]
+        case .daily, .weekly:
+            return leaderboardIDs[scope]
+        }
     }
 
     public func achievementID(for goalID: String) -> String? {
@@ -24,7 +31,16 @@ public struct GameCenterConfiguration: Equatable, Sendable {
 public enum GameCenterRankingScope: String, CaseIterable, Identifiable, Sendable {
     case daily
     case weekly
+    case allTime
+    /// Compatibility alias for older integrations.
+    ///
+    /// GameKit does not provide a monthly leaderboard time scope, so this case
+    /// is treated as `allTime` and hidden from `allCases`.
     case monthly
+
+    public static var allCases: [GameCenterRankingScope] {
+        [.daily, .weekly, .allTime]
+    }
 
     public var id: String { rawValue }
 
@@ -34,8 +50,10 @@ public enum GameCenterRankingScope: String, CaseIterable, Identifiable, Sendable
             return "일일"
         case .weekly:
             return "주간"
+        case .allTime:
+            return "전체"
         case .monthly:
-            return "월간"
+            return "전체"
         }
     }
 }

@@ -159,6 +159,8 @@ extension GameCenterRankingScope {
             return .today
         case .weekly:
             return .week
+        case .allTime:
+            return .allTime
         case .monthly:
             return .allTime
         }

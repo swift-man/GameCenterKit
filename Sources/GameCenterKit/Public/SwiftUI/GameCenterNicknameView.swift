@@ -26,7 +26,7 @@ public struct GameCenterNicknameView: View {
                 systemImageName: "person.crop.circle"
             )
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(player?.displayName ?? "닉네임 없음")
                     .font(.headline)
                     .lineLimit(1)
@@ -35,10 +35,15 @@ public struct GameCenterNicknameView: View {
                     Text(errorMessage)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                } else if player != nil {
+                    Text("Game Center")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
-            Spacer()
+            Spacer(minLength: 8)
 
             #if canImport(UIKit) && !os(watchOS)
             if showsProfileButton {
@@ -48,16 +53,24 @@ public struct GameCenterNicknameView: View {
                     Image(systemName: "person.crop.circle.badge.gearshape")
                         .imageScale(.large)
                 }
-                .buttonStyle(.bordered)
+                .gameCenterGlassButton()
                 .accessibilityLabel("Game Center 닉네임 설정")
             }
             #endif
         }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .gameCenterGlass(in: Capsule())
         .task {
             await loadPlayer()
         }
         #if canImport(UIKit) && !os(watchOS)
-        .sheet(isPresented: $showsProfile) {
+        .sheet(
+            isPresented: $showsProfile,
+            onDismiss: {
+                Task { await loadPlayer() }
+            }
+        ) {
             GameCenterSystemDashboardView(mode: .profile) {
                 showsProfile = false
             }

@@ -23,7 +23,7 @@ public struct GameCenterGoalProgressView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text(goal.title)
                     .font(.headline)
@@ -34,14 +34,20 @@ public struct GameCenterGoalProgressView: View {
                 Text("\(min(currentValue, goal.targetValue))/\(goal.targetValue)")
                     .font(.subheadline.monospacedDigit())
                     .foregroundStyle(.secondary)
+                    .gameCenterNumericTransition()
             }
 
             ProgressView(value: progress)
+                .tint(isCompleted ? Color.green : Color.accentColor)
 
             HStack {
-                Text(isCompleted ? "목표 달성" : "진행 중")
-                    .font(.footnote)
-                    .foregroundStyle(isCompleted ? .primary : .secondary)
+                Label(
+                    isCompleted ? "목표 달성" : "진행 중",
+                    systemImage: isCompleted ? "checkmark.seal.fill" : "flame"
+                )
+                .font(.footnote)
+                .foregroundStyle(isCompleted ? AnyShapeStyle(Color.green) : AnyShapeStyle(.secondary))
+                .gameCenterCompletionBounce(isCompleted: isCompleted)
 
                 Spacer()
 
@@ -55,6 +61,7 @@ public struct GameCenterGoalProgressView: View {
                             Text(didReportAchievement ? "완료됨" : "달성 보고")
                         }
                     }
+                    .gameCenterGlassButton(isProminent: true)
                     .disabled(isReportingAchievement || didReportAchievement)
                 }
             }
@@ -65,6 +72,8 @@ public struct GameCenterGoalProgressView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .padding(16)
+        .gameCenterGlassCard()
         .task(id: goal.achievementID) {
             await syncReportedAchievementState()
         }
@@ -119,13 +128,14 @@ public struct GameCenterGoalProgressView: View {
         do {
             let achievements = try await achievementClient.loadAchievements()
             guard let progress = achievements.first(where: { $0.id == achievementID }) else {
-                didReportAchievement = false
                 return
             }
 
-            didReportAchievement = progress.isCompleted || progress.percentComplete >= 100
+            if progress.isCompleted || progress.percentComplete >= 100 {
+                didReportAchievement = true
+            }
         } catch {
-            didReportAchievement = false
+            return
         }
     }
 }
