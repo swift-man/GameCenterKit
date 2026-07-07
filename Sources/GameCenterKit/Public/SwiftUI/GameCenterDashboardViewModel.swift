@@ -15,6 +15,15 @@ public final class GameCenterDashboardViewModel: ObservableObject {
             }
         }
     }
+    @Published public var selectedCategoryID: String {
+        didSet {
+            let normalizedCategoryID = normalizedCategoryID(selectedCategoryID)
+
+            if selectedCategoryID != normalizedCategoryID {
+                selectedCategoryID = normalizedCategoryID
+            }
+        }
+    }
     @Published public var playerScope: GameCenterPlayerScope
 
     private let configuration: GameCenterConfiguration
@@ -27,19 +36,28 @@ public final class GameCenterDashboardViewModel: ObservableObject {
 
     public init(
         configuration: GameCenterConfiguration,
+        selectedCategoryID: String? = nil,
         selectedScope: GameCenterRankingScope = .daily,
         playerScope: GameCenterPlayerScope = .global,
         range: Range<Int> = 1..<51
     ) {
         self.configuration = configuration
+        self.selectedCategoryID = selectedCategoryID.flatMap { id in
+            configuration.leaderboardCategory(id: id)?.id
+        } ?? configuration.leaderboardCategories.first?.id ?? ""
         self.selectedScope = selectedScope.normalizedForDashboardSelection
         self.playerScope = playerScope
         self.range = range
     }
 
+    public var leaderboardCategories: [GameCenterLeaderboardCategory] {
+        configuration.leaderboardCategories
+    }
+
     public func refresh() async {
         refreshGeneration += 1
         let generation = refreshGeneration
+        let requestedCategoryID = selectedCategoryID
         let requestedScope = selectedScope
         let requestedPlayerScope = playerScope
 
@@ -49,6 +67,7 @@ public final class GameCenterDashboardViewModel: ObservableObject {
         defer {
             if isCurrentRefresh(
                 generation: generation,
+                selectedCategoryID: requestedCategoryID,
                 selectedScope: requestedScope,
                 playerScope: requestedPlayerScope
             ) {
@@ -57,10 +76,13 @@ public final class GameCenterDashboardViewModel: ObservableObject {
         }
 
         do {
-            let loadedPlayer = try await loadLocalPlayerIfAvailable()
+            let loadedPlayer = try await authenticatedPlayerIfAvailable()
             let loadedPlayerPhoto = try await loadLocalPlayerPhotoIfAvailable()
 
-            guard let leaderboardID = configuration.leaderboardID(for: requestedScope) else {
+            guard let leaderboardID = configuration.leaderboardID(
+                for: requestedScope,
+                categoryID: requestedCategoryID
+            ) else {
                 throw GameCenterClientError.leaderboardNotConfigured(requestedScope)
             }
 
@@ -75,6 +97,7 @@ public final class GameCenterDashboardViewModel: ObservableObject {
 
             guard isCurrentRefresh(
                 generation: generation,
+                selectedCategoryID: requestedCategoryID,
                 selectedScope: requestedScope,
                 playerScope: requestedPlayerScope
             ) else {
@@ -89,6 +112,7 @@ public final class GameCenterDashboardViewModel: ObservableObject {
         } catch {
             guard isCurrentRefresh(
                 generation: generation,
+                selectedCategoryID: requestedCategoryID,
                 selectedScope: requestedScope,
                 playerScope: requestedPlayerScope
             ) else {
@@ -104,17 +128,27 @@ public final class GameCenterDashboardViewModel: ObservableObject {
 
     private func isCurrentRefresh(
         generation: Int,
+        selectedCategoryID: String,
         selectedScope: GameCenterRankingScope,
         playerScope: GameCenterPlayerScope
     ) -> Bool {
         generation == refreshGeneration &&
+            selectedCategoryID == self.selectedCategoryID &&
             selectedScope == self.selectedScope &&
             playerScope == self.playerScope
     }
 
-    private func loadLocalPlayerIfAvailable() async throws -> GameCenterPlayer? {
+    private func normalizedCategoryID(_ categoryID: String) -> String {
+        if configuration.leaderboardCategory(id: categoryID) != nil {
+            return categoryID
+        }
+
+        return configuration.leaderboardCategories.first?.id ?? ""
+    }
+
+    private func authenticatedPlayerIfAvailable() async throws -> GameCenterPlayer? {
         do {
-            return try await authenticationClient.localPlayer()
+            return try await authenticationClient.authenticatedPlayerUsingDefaultPresenter()
         } catch is CancellationError {
             throw CancellationError()
         } catch {

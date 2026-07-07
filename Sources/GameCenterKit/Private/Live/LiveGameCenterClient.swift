@@ -83,6 +83,18 @@ struct LiveGameCenterClient:
         try await GKAchievement.report([achievement])
     }
 
+    func resetAchievements() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            GKAchievement.resetAchievements { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
     func loadLeaderboards(IDs: [String]? = nil) async throws -> [GameCenterLeaderboard] {
         let leaderboards = try await GKLeaderboard.loadLeaderboards(IDs: IDs)
         return leaderboards.map(GameCenterLeaderboard.init(leaderboard:))

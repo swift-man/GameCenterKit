@@ -16,6 +16,8 @@ let package = Package(
         ),
     ],
     dependencies: [
+        .package(url: "https://github.com/swift-man/MaterialDesignColor.git", from: "2.1.0"),
+        .package(url: "https://github.com/swift-man/ShimmerUI.git", from: "1.0.0"),
         .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.0.0"),
     ],
     targets: [
@@ -23,6 +25,8 @@ let package = Package(
             name: "GameCenterKit",
             dependencies: [
                 .product(name: "Dependencies", package: "swift-dependencies"),
+                .product(name: "MaterialDesignColorSwiftUI", package: "MaterialDesignColor"),
+                .product(name: "ShimmerUI", package: "ShimmerUI"),
             ]
         ),
         .testTarget(

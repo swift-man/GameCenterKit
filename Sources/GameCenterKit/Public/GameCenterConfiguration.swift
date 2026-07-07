@@ -1,15 +1,21 @@
 import Foundation
 
-public struct GameCenterConfiguration: Equatable, Sendable {
+public struct GameCenterLeaderboardCategory: Identifiable, Equatable, Sendable {
+    static let defaultID = "default"
+    static let defaultTitle = "랭킹"
+
+    public var id: String
+    public var title: String
     public var leaderboardIDs: [GameCenterRankingScope: String]
-    public var goalAchievements: [String: String]
 
     public init(
-        leaderboardIDs: [GameCenterRankingScope: String],
-        goalAchievements: [String: String] = [:]
+        id: String,
+        title: String,
+        leaderboardIDs: [GameCenterRankingScope: String]
     ) {
+        self.id = id
+        self.title = title
         self.leaderboardIDs = leaderboardIDs
-        self.goalAchievements = goalAchievements
     }
 
     public func leaderboardID(for scope: GameCenterRankingScope) -> String? {
@@ -21,6 +27,68 @@ public struct GameCenterConfiguration: Equatable, Sendable {
         case .daily, .weekly:
             return leaderboardIDs[scope]
         }
+    }
+}
+
+public struct GameCenterConfiguration: Equatable, Sendable {
+    public var leaderboardCategories: [GameCenterLeaderboardCategory]
+    public var goalAchievements: [String: String]
+
+    public var leaderboardIDs: [GameCenterRankingScope: String] {
+        get {
+            leaderboardCategories.first?.leaderboardIDs ?? [:]
+        }
+        set {
+            if leaderboardCategories.isEmpty {
+                leaderboardCategories = [
+                    GameCenterLeaderboardCategory(
+                        id: GameCenterLeaderboardCategory.defaultID,
+                        title: GameCenterLeaderboardCategory.defaultTitle,
+                        leaderboardIDs: newValue
+                    ),
+                ]
+            } else {
+                leaderboardCategories[0].leaderboardIDs = newValue
+            }
+        }
+    }
+
+    public init(
+        leaderboardIDs: [GameCenterRankingScope: String],
+        goalAchievements: [String: String] = [:]
+    ) {
+        self.leaderboardCategories = [
+            GameCenterLeaderboardCategory(
+                id: GameCenterLeaderboardCategory.defaultID,
+                title: GameCenterLeaderboardCategory.defaultTitle,
+                leaderboardIDs: leaderboardIDs
+            ),
+        ]
+        self.goalAchievements = goalAchievements
+    }
+
+    public init(
+        leaderboardCategories: [GameCenterLeaderboardCategory],
+        goalAchievements: [String: String] = [:]
+    ) {
+        self.leaderboardCategories = leaderboardCategories
+        self.goalAchievements = goalAchievements
+    }
+
+    public func leaderboardID(for scope: GameCenterRankingScope) -> String? {
+        leaderboardID(for: scope, categoryID: nil)
+    }
+
+    public func leaderboardID(for scope: GameCenterRankingScope, categoryID: String?) -> String? {
+        leaderboardCategory(id: categoryID)?.leaderboardID(for: scope)
+    }
+
+    public func leaderboardCategory(id: String?) -> GameCenterLeaderboardCategory? {
+        guard let id, !id.isEmpty else {
+            return leaderboardCategories.first
+        }
+
+        return leaderboardCategories.first { $0.id == id }
     }
 
     public func achievementID(for goalID: String) -> String? {

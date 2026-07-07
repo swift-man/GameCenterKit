@@ -2,6 +2,17 @@
 
 All notable changes to GameCenterKit will be documented in this file.
 
+## [0.2.0] - 2026-07-08
+
+### Added
+
+- Added MaterialDesignColor and ShimmerUI package integrations.
+- Added required Material theme injection for public SwiftUI dashboard surfaces and applied Material 3 color roles across dashboard, leaderboard, nickname, goal, empty, button, card, and shimmer states.
+- Added leaderboard categories so apps can provide multiple ranking boards such as iPad ranking and iPad hardware keyboard ranking, each with its own daily, weekly, and all-time leaderboard IDs.
+- Added a leaderboard category picker that appears when more than one ranking category is configured.
+- Added DEBUG achievement reset support through public reset APIs and the Game Center debug menu.
+- Added a root `gameCenterAuthentication` view modifier for early Game Center authentication.
+
 ## [0.1.0] - 2026-07-07
 
 ### Added

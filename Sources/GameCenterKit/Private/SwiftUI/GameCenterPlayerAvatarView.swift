@@ -1,9 +1,12 @@
+import MaterialDesignColorSwiftUI
 import SwiftUI
 
 struct GameCenterPlayerAvatarView: View {
     var photo: GameCenterPlayerPhoto?
     var systemImageName: String = "person.crop.circle"
     var size: CGFloat = 40
+
+    @Environment(\.materialTheme) private var materialTheme
 
     var body: some View {
         Group {
@@ -31,7 +34,7 @@ struct GameCenterPlayerAvatarView: View {
         .clipShape(Circle())
         .overlay {
             Circle()
-                .stroke(.secondary.opacity(0.2), lineWidth: 1)
+                .stroke(materialTheme.colorScheme.outlineVariant.color, lineWidth: 1)
         }
         .accessibilityHidden(true)
     }
@@ -40,7 +43,7 @@ struct GameCenterPlayerAvatarView: View {
         Image(systemName: systemImageName)
             .resizable()
             .scaledToFit()
-            .foregroundStyle(.secondary)
+            .foregroundStyle(materialTheme.colorScheme.onSurfaceVariant.color)
             .padding(size * 0.14)
     }
 }

@@ -1,3 +1,4 @@
+import MaterialDesignColorSwiftUI
 import SwiftUI
 
 struct GameCenterEmptyStateView: View {
@@ -6,27 +7,33 @@ struct GameCenterEmptyStateView: View {
     let message: String?
 
     var body: some View {
+        let scheme = materialTheme.colorScheme
+
         if #available(iOS 17.0, macOS 14.0, visionOS 1.0, *) {
             ContentUnavailableView {
                 Label(title, systemImage: systemImage)
+                    .foregroundStyle(scheme.onSurface.color)
             } description: {
                 if let message {
                     Text(message)
+                        .foregroundStyle(scheme.onSurfaceVariant.color)
                 }
             }
+            .tint(scheme.primary.color)
         } else {
             VStack(spacing: 10) {
                 Image(systemName: systemImage)
                     .font(.largeTitle)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(scheme.primary.color)
 
                 Text(title)
                     .font(.headline)
+                    .foregroundStyle(scheme.onSurface.color)
 
                 if let message {
                     Text(message)
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(scheme.onSurfaceVariant.color)
                         .multilineTextAlignment(.center)
                 }
             }
@@ -34,4 +41,6 @@ struct GameCenterEmptyStateView: View {
             .padding()
         }
     }
+
+    @Environment(\.materialTheme) private var materialTheme
 }

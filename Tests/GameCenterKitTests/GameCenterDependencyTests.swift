@@ -161,6 +161,17 @@ final class GameCenterDependencyTests: XCTestCase {
         XCTAssertEqual(activities[started.id], ended)
     }
 
+    func testOverridesAchievementResetDependency() async throws {
+        let preview = PreviewGameCenterClient()
+
+        try await withDependencies {
+            $0.gameCenterAchievementClient = preview
+        } operation: {
+            @Dependency(\.gameCenterAchievementClient) var achievementClient
+            try await achievementClient.resetAchievements()
+        }
+    }
+
     @MainActor
     func testDashboardRefreshClearsSnapshotOnCurrentFailure() async {
         let request = GameCenterLeaderboardRequest(
@@ -252,4 +263,6 @@ private struct StubGameCenterClient: GameCenterClientProtocol {
     }
 
     func reportAchievement(_ report: GameCenterAchievementReport) async throws {}
+
+    func resetAchievements() async throws {}
 }

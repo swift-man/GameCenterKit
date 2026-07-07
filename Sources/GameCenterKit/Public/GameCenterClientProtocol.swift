@@ -55,6 +55,7 @@ public protocol GameCenterRecurringLeaderboardClientProtocol: Sendable {
 public protocol GameCenterAchievementClientProtocol: Sendable {
     func loadAchievements() async throws -> [GameCenterAchievementProgress]
     func reportAchievement(_ report: GameCenterAchievementReport) async throws
+    func resetAchievements() async throws
 }
 
 public protocol GameCenterAccessPointClientProtocol: Sendable {
@@ -128,6 +129,17 @@ extension GameCenterAchievementClientProtocol {
                 showsCompletionBanner: showsCompletionBanner
             )
         )
+    }
+
+    public func resetAchievements(_ completion: @escaping @Sendable (Error?) -> Void) {
+        Task {
+            do {
+                try await resetAchievements()
+                completion(nil)
+            } catch {
+                completion(error)
+            }
+        }
     }
 }
 
