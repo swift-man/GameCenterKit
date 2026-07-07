@@ -135,9 +135,13 @@ extension GameCenterAchievementClientProtocol {
         Task {
             do {
                 try await resetAchievements()
-                completion(nil)
+                await MainActor.run {
+                    completion(nil)
+                }
             } catch {
-                completion(error)
+                await MainActor.run {
+                    completion(error)
+                }
             }
         }
     }

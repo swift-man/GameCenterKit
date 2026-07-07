@@ -197,18 +197,30 @@ public struct GameCenterMainView: View {
 
     private var goalsToolbarPlacement: ToolbarItemPlacement {
         #if os(macOS)
-        .primaryAction
+        return .primaryAction
+        #elseif os(iOS)
+        if #available(iOS 16.0, *) {
+            return .topBarTrailing
+        } else {
+            return .navigationBarTrailing
+        }
         #else
-        .topBarTrailing
+        return .topBarTrailing
         #endif
     }
 
     #if DEBUG
     private var debugToolbarPlacement: ToolbarItemPlacement {
         #if os(macOS)
-        .automatic
+        return .automatic
+        #elseif os(iOS)
+        if #available(iOS 16.0, *) {
+            return .topBarLeading
+        } else {
+            return .navigationBarLeading
+        }
         #else
-        .topBarLeading
+        return .topBarLeading
         #endif
     }
 

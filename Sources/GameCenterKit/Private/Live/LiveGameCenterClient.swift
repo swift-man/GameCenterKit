@@ -84,15 +84,7 @@ struct LiveGameCenterClient:
     }
 
     func resetAchievements() async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            GKAchievement.resetAchievements { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
-                }
-            }
-        }
+        try await GKAchievement.resetAchievements()
     }
 
     func loadLeaderboards(IDs: [String]? = nil) async throws -> [GameCenterLeaderboard] {

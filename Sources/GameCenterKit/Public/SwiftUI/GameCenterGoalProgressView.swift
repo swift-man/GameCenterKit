@@ -260,12 +260,11 @@ public struct GameCenterGoalProgressView: View {
         do {
             let achievements = try await achievementClient.loadAchievements()
             guard let progress = achievements.first(where: { $0.id == achievementID }) else {
+                didReportAchievement = false
                 return
             }
 
-            if progress.isCompleted || progress.percentComplete >= 100 {
-                didReportAchievement = true
-            }
+            didReportAchievement = progress.isCompleted || progress.percentComplete >= 100
         } catch {
             return
         }
