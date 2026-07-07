@@ -18,7 +18,7 @@ public struct GameCenterConfiguration: Equatable, Sendable {
             return leaderboardIDs[.allTime] ?? leaderboardIDs[.monthly]
         case .monthly:
             return leaderboardIDs[.monthly] ?? leaderboardIDs[.allTime]
-        default:
+        case .daily, .weekly:
             return leaderboardIDs[scope]
         }
     }
