@@ -65,7 +65,12 @@ public struct GameCenterNicknameView: View {
             await loadPlayer()
         }
         #if canImport(UIKit) && !os(watchOS)
-        .sheet(isPresented: $showsProfile) {
+        .sheet(
+            isPresented: $showsProfile,
+            onDismiss: {
+                Task { await loadPlayer() }
+            }
+        ) {
             GameCenterSystemDashboardView(mode: .profile) {
                 showsProfile = false
             }
