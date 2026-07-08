@@ -29,6 +29,7 @@ public final class GameCenterDashboardViewModel: ObservableObject {
     private let configuration: GameCenterConfiguration
     private let range: Range<Int>
     private var refreshGeneration = 0
+    private var hasRequestedDefaultAuthentication = false
 
     @Dependency(\.gameCenterAuthenticationClient) private var authenticationClient
     @Dependency(\.gameCenterLeaderboardClient) private var leaderboardClient
@@ -147,9 +148,20 @@ public final class GameCenterDashboardViewModel: ObservableObject {
     }
 
     private func authenticatedPlayerIfAvailable() async throws -> GameCenterPlayer? {
+        if authenticationClient.isAuthenticated {
+            return try await authenticationClient.localPlayer()
+        }
+
+        guard !hasRequestedDefaultAuthentication else {
+            return nil
+        }
+
+        hasRequestedDefaultAuthentication = true
+
         do {
             return try await authenticationClient.authenticatedPlayerUsingDefaultPresenter()
         } catch is CancellationError {
+            hasRequestedDefaultAuthentication = false
             throw CancellationError()
         } catch {
             return nil
