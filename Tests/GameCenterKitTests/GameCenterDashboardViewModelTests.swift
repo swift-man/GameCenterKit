@@ -133,6 +133,33 @@ final class GameCenterDashboardViewModelTests: XCTestCase {
         }
     }
 
+    func testRefreshCanRetryDefaultAuthenticationAfterPresentationFailure() async {
+        let authenticationSpy = DashboardAuthenticationSpy(
+            isAuthenticated: false,
+            authenticateError: GameCenterClientError.authenticationPresentationRequired
+        )
+        let preview = PreviewGameCenterClient()
+
+        await withDependencies {
+            $0.gameCenterAuthenticationClient = authenticationSpy
+            $0.gameCenterLeaderboardClient = preview
+            $0.gameCenterPlayerPhotoClient = preview
+        } operation: {
+            let model = GameCenterDashboardViewModel(
+                configuration: GameCenterConfiguration(
+                    leaderboardIDs: [.daily: "daily-id"]
+                )
+            )
+
+            await model.refresh()
+            authenticationSpy.authenticateError = nil
+            await model.refresh()
+
+            XCTAssertEqual(authenticationSpy.authenticateCallCount, 2)
+            XCTAssertEqual(authenticationSpy.localPlayerCallCount, 0)
+        }
+    }
+
     func testRefreshKeepsLeaderboardWhenAuthenticatedLocalPlayerFails() async {
         let authenticationSpy = DashboardAuthenticationSpy(
             isAuthenticated: true,
@@ -169,7 +196,7 @@ private final class DashboardAuthenticationSpy: GameCenterAuthenticationClientPr
     private(set) var localPlayerCallCount = 0
 
     private let player: GameCenterPlayer
-    private let authenticateError: Error?
+    var authenticateError: Error?
     private let localPlayerError: Error?
 
     init(

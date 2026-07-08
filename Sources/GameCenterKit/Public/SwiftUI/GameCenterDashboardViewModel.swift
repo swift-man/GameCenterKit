@@ -169,7 +169,10 @@ public final class GameCenterDashboardViewModel: ObservableObject {
         } catch is CancellationError {
             hasRequestedDefaultAuthentication = false
             throw CancellationError()
+        } catch GameCenterClientError.notAuthenticated {
+            return nil
         } catch {
+            hasRequestedDefaultAuthentication = false
             return nil
         }
     }

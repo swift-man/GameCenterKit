@@ -102,8 +102,8 @@ public struct GameCenterSystemDashboardView: UIViewControllerRepresentable {
 
 @MainActor
 public enum GameCenterUIKitPresenter {
-    public static func present(_ viewController: UIViewController) async {
-        _ = await presentIfAvailable(viewController)
+    public static func present(_ viewController: UIViewController) async throws {
+        try await presentRequired(viewController)
     }
 
     public static func presentRequired(_ viewController: UIViewController) async throws {
@@ -112,7 +112,8 @@ public enum GameCenterUIKitPresenter {
         }
     }
 
-    private static func presentIfAvailable(_ viewController: UIViewController) async -> Bool {
+    @discardableResult
+    public static func presentIfAvailable(_ viewController: UIViewController) async -> Bool {
         guard let presenter = UIApplication.shared.gameCenterTopMostViewController else {
             return false
         }
