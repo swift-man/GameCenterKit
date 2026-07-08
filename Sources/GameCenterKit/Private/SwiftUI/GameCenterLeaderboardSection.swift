@@ -1,11 +1,23 @@
+import MaterialDesignColorSwiftUI
+import ShimmerUI
 import SwiftUI
 
 struct GameCenterLeaderboardSection: View {
     @ObservedObject var model: GameCenterDashboardViewModel
     var showsPlayerScopePicker: Bool = true
 
+    @Environment(\.materialTheme) private var materialTheme
+
+    #if canImport(UIKit) && !os(watchOS)
+    @State private var systemLeaderboard: GameCenterSystemDashboardMode?
+    #endif
+
     var body: some View {
         VStack(spacing: 12) {
+            if model.leaderboardCategories.count > 1 {
+                categoryPicker
+            }
+
             rankingPicker
 
             if showsPlayerScopePicker {
@@ -17,10 +29,42 @@ struct GameCenterLeaderboardSection: View {
         .task(id: refreshKey) {
             await model.refresh()
         }
+        #if canImport(UIKit) && !os(watchOS)
+        .sheet(item: $systemLeaderboard) { mode in
+            GameCenterSystemDashboardView(mode: mode) {
+                systemLeaderboard = nil
+            }
+        }
+        #endif
     }
 
     private var refreshKey: RefreshKey {
-        RefreshKey(rankingScope: model.selectedScope, playerScope: model.playerScope)
+        RefreshKey(
+            selectedCategoryID: model.selectedCategoryID,
+            rankingScope: model.selectedScope,
+            playerScope: model.playerScope
+        )
+    }
+
+    private var categoryPicker: some View {
+        let scheme = materialTheme.colorScheme
+
+        return HStack(spacing: 8) {
+            Text("종류")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(scheme.onSurfaceVariant.color)
+
+            Spacer(minLength: 8)
+
+            Picker("랭킹 종류", selection: $model.selectedCategoryID) {
+                ForEach(model.leaderboardCategories) { category in
+                    Text(category.title).tag(category.id)
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(scheme.primary.color)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var rankingPicker: some View {
@@ -30,6 +74,7 @@ struct GameCenterLeaderboardSection: View {
             }
         }
         .pickerStyle(.segmented)
+        .tint(materialTheme.colorScheme.primary.color)
     }
 
     private var playerScopePicker: some View {
@@ -39,6 +84,9 @@ struct GameCenterLeaderboardSection: View {
             }
         }
         .pickerStyle(.segmented)
+        .tint(materialTheme.colorScheme.primary.color)
+        .fixedSize()
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     @ViewBuilder
@@ -58,6 +106,16 @@ struct GameCenterLeaderboardSection: View {
                         entry: entry,
                         isLocalPlayer: isLocalPlayer(entry, in: snapshot)
                     )
+                    #if canImport(UIKit) && !os(watchOS)
+                    .onTapGesture {
+                        systemLeaderboard = .leaderboard(
+                            id: snapshot.request.leaderboardID,
+                            rankingScope: snapshot.request.rankingScope,
+                            playerScope: snapshot.request.playerScope
+                        )
+                    }
+                    .accessibilityAddTraits(.isButton)
+                    #endif
                 }
             }
         } else {
@@ -70,12 +128,13 @@ struct GameCenterLeaderboardSection: View {
     }
 
     private var skeleton: some View {
-        LazyVStack(spacing: 2) {
-            ForEach(0 ..< 8, id: \.self) { _ in
-                GameCenterLeaderboardRow(entry: .redactedPlaceholder, isLocalPlayer: false)
+        ShimmerLoadingUI.Container(configuration: materialTheme.gameCenterShimmerConfiguration) {
+            LazyVStack(spacing: 2) {
+                ForEach(0 ..< 8, id: \.self) { _ in
+                    GameCenterLeaderboardSkeletonRow()
+                }
             }
         }
-        .redacted(reason: .placeholder)
         .allowsHitTesting(false)
     }
 
@@ -88,18 +147,27 @@ struct GameCenterLeaderboardSection: View {
     }
 
     private struct RefreshKey: Equatable {
+        var selectedCategoryID: String
         var rankingScope: GameCenterRankingScope
         var playerScope: GameCenterPlayerScope
     }
 }
 
-extension GameCenterLeaderboardEntry {
-    static let redactedPlaceholder = GameCenterLeaderboardEntry(
-        id: "placeholder",
-        rank: 8,
-        score: 0,
-        formattedScore: "0,000",
-        displayName: "Player Name",
-        gamePlayerID: "placeholder"
-    )
+private struct GameCenterLeaderboardSkeletonRow: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            ShimmerLoadingUI.Block(.circle)
+                .frame(width: 30, height: 30)
+
+            ShimmerLoadingUI.Block(.capsule)
+                .frame(width: 132, height: 16)
+
+            Spacer(minLength: 8)
+
+            ShimmerLoadingUI.Block(.capsule)
+                .frame(width: 58, height: 16)
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+    }
 }

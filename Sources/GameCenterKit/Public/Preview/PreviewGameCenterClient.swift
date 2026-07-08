@@ -117,6 +117,8 @@ public struct PreviewGameCenterClient:
 
     public func reportAchievement(_ report: GameCenterAchievementReport) async throws {}
 
+    public func resetAchievements() async throws {}
+
     public func loadLeaderboards(IDs: [String]? = nil) async throws -> [GameCenterLeaderboard] {
         guard let IDs else {
             return leaderboards
@@ -302,6 +304,10 @@ public struct UnimplementedGameCenterClient:
     }
 
     public func reportAchievement(_ report: GameCenterAchievementReport) async throws {
+        throw GameCenterClientError.notAuthenticated
+    }
+
+    public func resetAchievements() async throws {
         throw GameCenterClientError.notAuthenticated
     }
 

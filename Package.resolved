@@ -1,5 +1,5 @@
 {
-  "originHash" : "2b1d8538a39574b821e8e8ea54e71bc865e831141c69c28fefdfdb2ba877630e",
+  "originHash" : "863462f4892c4ef9f0608cdbe8f1906e387d2d09b41080f53b53aac7844664f9",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -8,6 +8,24 @@
       "state" : {
         "revision" : "dcccb979a2183b8df3334237e3dc1ae2b4116a86",
         "version" : "1.2.0"
+      }
+    },
+    {
+      "identity" : "materialdesigncolor",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swift-man/MaterialDesignColor.git",
+      "state" : {
+        "revision" : "c010b557d6f7de3a000b861f3d2eab75f1470676",
+        "version" : "2.1.0"
+      }
+    },
+    {
+      "identity" : "shimmerui",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swift-man/ShimmerUI.git",
+      "state" : {
+        "revision" : "eba76f91c997a5dadd381f19ca807a07bf083b2e",
+        "version" : "1.0.0"
       }
     },
     {

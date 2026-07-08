@@ -27,3 +27,62 @@ struct ProfileFeature {
 Use `PreviewGameCenterClient` in previews and tests to inject players, friends,
 leaderboards, achievements, activities, and player photos without touching live
 Game Center state.
+
+## SwiftUI Dashboard
+
+Apps provide the Material theme so GameCenterKit can apply Material 3 color roles
+consistently across cards, buttons, loading placeholders, and text.
+
+```swift
+import GameCenterKit
+import MaterialDesignColorSwiftUI
+
+let theme = try MaterialTheme.custom(
+    appearance: .light,
+    overrides: [
+        .primary: "#6750A4",
+        .onPrimary: "#FFFFFF",
+        .surface: "#FFFBFE",
+        .onSurface: "#1C1B1F",
+    ],
+    sourceColor: "#6750A4"
+)
+
+GameCenterMainView(
+    configuration: GameCenterConfiguration(
+        leaderboardCategories: [
+            GameCenterLeaderboardCategory(
+                id: "ipad",
+                title: "iPad Ranking",
+                leaderboardIDs: [
+                    .daily: "ipad.daily",
+                    .weekly: "ipad.weekly",
+                    .allTime: "ipad.all-time",
+                ]
+            ),
+            GameCenterLeaderboardCategory(
+                id: "ipad.keyboard",
+                title: "iPad Hardware Keyboard Ranking",
+                leaderboardIDs: [
+                    .daily: "ipad-keyboard.daily",
+                    .weekly: "ipad-keyboard.weekly",
+                    .allTime: "ipad-keyboard.all-time",
+                ]
+            ),
+        ]
+    ),
+    theme: theme
+)
+```
+
+For single-board games, the existing `leaderboardIDs` initializer still works:
+
+```swift
+GameCenterConfiguration(
+    leaderboardIDs: [
+        .daily: "score.daily",
+        .weekly: "score.weekly",
+        .allTime: "score.all-time",
+    ]
+)
+```

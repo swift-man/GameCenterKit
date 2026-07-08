@@ -102,9 +102,20 @@ public struct GameCenterSystemDashboardView: UIViewControllerRepresentable {
 
 @MainActor
 public enum GameCenterUIKitPresenter {
-    public static func present(_ viewController: UIViewController) async {
+    public static func present(_ viewController: UIViewController) async throws {
+        try await presentRequired(viewController)
+    }
+
+    public static func presentRequired(_ viewController: UIViewController) async throws {
+        guard await presentIfAvailable(viewController) else {
+            throw GameCenterClientError.authenticationPresentationRequired
+        }
+    }
+
+    @discardableResult
+    public static func presentIfAvailable(_ viewController: UIViewController) async -> Bool {
         guard let presenter = UIApplication.shared.gameCenterTopMostViewController else {
-            return
+            return false
         }
 
         await withCheckedContinuation { continuation in
@@ -112,6 +123,8 @@ public enum GameCenterUIKitPresenter {
                 continuation.resume()
             }
         }
+
+        return true
     }
 }
 #endif

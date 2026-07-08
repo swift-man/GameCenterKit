@@ -83,6 +83,10 @@ struct LiveGameCenterClient:
         try await GKAchievement.report([achievement])
     }
 
+    func resetAchievements() async throws {
+        try await GKAchievement.resetAchievements()
+    }
+
     func loadLeaderboards(IDs: [String]? = nil) async throws -> [GameCenterLeaderboard] {
         let leaderboards = try await GKLeaderboard.loadLeaderboards(IDs: IDs)
         return leaderboards.map(GameCenterLeaderboard.init(leaderboard:))
@@ -601,8 +605,14 @@ private final class LiveGameCenterAuthenticationCoordinator {
                             return
                         }
 
-                        await presenter(viewController)
-                        return
+                        do {
+                            try await presenter(viewController)
+                            return
+                        } catch {
+                            GKLocalPlayer.local.authenticateHandler = nil
+                            state.resume(throwing: error)
+                            return
+                        }
                     }
 
                     if let error {

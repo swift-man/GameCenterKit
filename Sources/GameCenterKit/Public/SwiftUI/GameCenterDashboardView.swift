@@ -1,8 +1,10 @@
+import MaterialDesignColorSwiftUI
 import SwiftUI
 
 public struct GameCenterDashboardView: View {
     @StateObject private var model: GameCenterDashboardViewModel
 
+    private let theme: MaterialTheme
     private let showsSystemProfileButton: Bool
     private let showsPlayerScopePicker: Bool
 
@@ -12,17 +14,21 @@ public struct GameCenterDashboardView: View {
 
     public init(
         configuration: GameCenterConfiguration,
+        theme: MaterialTheme,
+        selectedCategoryID: String? = nil,
         selectedScope: GameCenterRankingScope = .daily,
         playerScope: GameCenterPlayerScope = .global,
         range: Range<Int> = 1..<51,
         showsSystemProfileButton: Bool = true,
         showsPlayerScopePicker: Bool = true
     ) {
+        self.theme = theme
         self.showsSystemProfileButton = showsSystemProfileButton
         self.showsPlayerScopePicker = showsPlayerScopePicker
         _model = StateObject(
             wrappedValue: GameCenterDashboardViewModel(
                 configuration: configuration,
+                selectedCategoryID: selectedCategoryID,
                 selectedScope: selectedScope,
                 playerScope: playerScope,
                 range: range
@@ -32,9 +38,11 @@ public struct GameCenterDashboardView: View {
 
     public init(
         model: GameCenterDashboardViewModel,
+        theme: MaterialTheme,
         showsSystemProfileButton: Bool = true,
         showsPlayerScopePicker: Bool = true
     ) {
+        self.theme = theme
         self.showsSystemProfileButton = showsSystemProfileButton
         self.showsPlayerScopePicker = showsPlayerScopePicker
         _model = StateObject(wrappedValue: model)
@@ -52,6 +60,8 @@ public struct GameCenterDashboardView: View {
             }
             .padding()
         }
+        .background(theme.colorScheme.surface.color)
+        .materialTheme(theme)
         #if canImport(UIKit) && !os(watchOS)
         .sheet(item: $systemDashboardMode) { mode in
             GameCenterSystemDashboardView(mode: mode) {
@@ -62,18 +72,22 @@ public struct GameCenterDashboardView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
+        let scheme = theme.colorScheme
+
+        return HStack(alignment: .center, spacing: 12) {
             GameCenterPlayerAvatarView(photo: model.playerPhoto)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(model.player?.displayName ?? "Game Center")
                     .font(.headline)
+                    .foregroundStyle(scheme.onSurface.color)
 
                 if let localEntry = model.snapshot?.localPlayerEntry {
                     Text("#\(localEntry.rank) · \(localEntry.formattedScore)")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(scheme.onSurfaceVariant.color)
                         .gameCenterNumericTransition()
+                        .animation(.default, value: localEntry.score)
                 }
             }
 
