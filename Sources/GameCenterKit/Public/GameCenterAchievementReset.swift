@@ -2,8 +2,13 @@
 
 #if DEBUG
 public func resetGameCenterAchievements() {
-    GKAchievement.resetAchievements { error in
-        print(error ?? "reset success")
+    Task {
+        do {
+            try await GKAchievement.resetAchievements()
+            print("reset success")
+        } catch {
+            print(error)
+        }
     }
 }
 #endif
