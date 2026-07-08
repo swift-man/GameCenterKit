@@ -56,7 +56,7 @@ extension GameCenterAuthenticationClientProtocol {
     func authenticatedPlayerUsingDefaultPresenter() async throws -> GameCenterPlayer {
         #if canImport(UIKit) && !os(watchOS)
         return try await authenticate(presenting: { viewController in
-            await GameCenterUIKitPresenter.present(viewController)
+            try await GameCenterUIKitPresenter.presentRequired(viewController)
         })
         #elseif canImport(AppKit)
         return try await authenticate(presenting: nil)

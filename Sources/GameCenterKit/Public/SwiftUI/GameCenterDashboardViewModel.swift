@@ -149,7 +149,13 @@ public final class GameCenterDashboardViewModel: ObservableObject {
 
     private func authenticatedPlayerIfAvailable() async throws -> GameCenterPlayer? {
         if authenticationClient.isAuthenticated {
-            return try await authenticationClient.localPlayer()
+            do {
+                return try await authenticationClient.localPlayer()
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                return nil
+            }
         }
 
         guard !hasRequestedDefaultAuthentication else {

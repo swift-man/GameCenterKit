@@ -132,6 +132,34 @@ final class GameCenterDashboardViewModelTests: XCTestCase {
             XCTAssertEqual(authenticationSpy.localPlayerCallCount, 0)
         }
     }
+
+    func testRefreshKeepsLeaderboardWhenAuthenticatedLocalPlayerFails() async {
+        let authenticationSpy = DashboardAuthenticationSpy(
+            isAuthenticated: true,
+            localPlayerError: GameCenterClientError.notAuthenticated
+        )
+        let preview = PreviewGameCenterClient()
+
+        await withDependencies {
+            $0.gameCenterAuthenticationClient = authenticationSpy
+            $0.gameCenterLeaderboardClient = preview
+            $0.gameCenterPlayerPhotoClient = preview
+        } operation: {
+            let model = GameCenterDashboardViewModel(
+                configuration: GameCenterConfiguration(
+                    leaderboardIDs: [.daily: "daily-id"]
+                )
+            )
+
+            await model.refresh()
+
+            XCTAssertEqual(authenticationSpy.authenticateCallCount, 0)
+            XCTAssertEqual(authenticationSpy.localPlayerCallCount, 1)
+            XCTAssertNil(model.player)
+            XCTAssertNotNil(model.snapshot)
+            XCTAssertNil(model.errorMessage)
+        }
+    }
 }
 
 @MainActor
@@ -142,15 +170,18 @@ private final class DashboardAuthenticationSpy: GameCenterAuthenticationClientPr
 
     private let player: GameCenterPlayer
     private let authenticateError: Error?
+    private let localPlayerError: Error?
 
     init(
         isAuthenticated: Bool,
         player: GameCenterPlayer = .preview,
-        authenticateError: Error? = nil
+        authenticateError: Error? = nil,
+        localPlayerError: Error? = nil
     ) {
         self.isAuthenticated = isAuthenticated
         self.player = player
         self.authenticateError = authenticateError
+        self.localPlayerError = localPlayerError
     }
 
     #if canImport(UIKit) || canImport(AppKit)
@@ -167,6 +198,10 @@ private final class DashboardAuthenticationSpy: GameCenterAuthenticationClientPr
 
     func localPlayer() async throws -> GameCenterPlayer {
         localPlayerCallCount += 1
+
+        if let localPlayerError {
+            throw localPlayerError
+        }
 
         guard isAuthenticated else {
             throw GameCenterClientError.notAuthenticated

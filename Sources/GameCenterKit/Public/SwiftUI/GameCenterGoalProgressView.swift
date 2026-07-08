@@ -235,6 +235,7 @@ public struct GameCenterGoalProgressView: View {
         }
     }
 
+    @MainActor
     private func reportAchievement() async {
         guard let achievementID = goal.achievementID else {
             return
@@ -259,6 +260,7 @@ public struct GameCenterGoalProgressView: View {
         }
     }
 
+    @MainActor
     private func syncReportedAchievementState() async {
         guard let achievementID = goal.achievementID else {
             didReportAchievement = false

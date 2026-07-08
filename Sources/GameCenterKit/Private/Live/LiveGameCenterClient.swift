@@ -605,8 +605,14 @@ private final class LiveGameCenterAuthenticationCoordinator {
                             return
                         }
 
-                        await presenter(viewController)
-                        return
+                        do {
+                            try await presenter(viewController)
+                            return
+                        } catch {
+                            GKLocalPlayer.local.authenticateHandler = nil
+                            state.resume(throwing: error)
+                            return
+                        }
                     }
 
                     if let error {

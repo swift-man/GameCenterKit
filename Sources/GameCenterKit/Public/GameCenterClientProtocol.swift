@@ -15,7 +15,7 @@ public typealias GameCenterAuthenticationViewController = NSViewController
 #endif
 
 #if canImport(UIKit) || canImport(AppKit)
-public typealias GameCenterAuthenticationPresenter = @MainActor @Sendable (GameCenterAuthenticationViewController) async -> Void
+public typealias GameCenterAuthenticationPresenter = @MainActor @Sendable (GameCenterAuthenticationViewController) async throws -> Void
 #endif
 
 public enum GameCenterClientError: Error, Equatable, Sendable {
