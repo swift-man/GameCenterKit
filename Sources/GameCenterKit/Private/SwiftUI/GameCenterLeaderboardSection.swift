@@ -5,6 +5,7 @@ import SwiftUI
 struct GameCenterLeaderboardSection: View {
     @ObservedObject var model: GameCenterDashboardViewModel
     var showsPlayerScopePicker: Bool = true
+    var refreshTrigger = 0
 
     @Environment(\.materialTheme) private var materialTheme
 
@@ -42,7 +43,8 @@ struct GameCenterLeaderboardSection: View {
         RefreshKey(
             selectedCategoryID: model.selectedCategoryID,
             rankingScope: model.selectedScope,
-            playerScope: model.playerScope
+            playerScope: model.playerScope,
+            refreshTrigger: refreshTrigger
         )
     }
 
@@ -150,6 +152,7 @@ struct GameCenterLeaderboardSection: View {
         var selectedCategoryID: String
         var rankingScope: GameCenterRankingScope
         var playerScope: GameCenterPlayerScope
+        var refreshTrigger: Int
     }
 }
 

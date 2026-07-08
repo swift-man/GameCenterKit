@@ -3,6 +3,7 @@ import SwiftUI
 
 public struct GameCenterDashboardView: View {
     @StateObject private var model: GameCenterDashboardViewModel
+    @State private var dashboardRefreshTrigger = 0
 
     private let theme: MaterialTheme
     private let showsSystemProfileButton: Bool
@@ -55,7 +56,8 @@ public struct GameCenterDashboardView: View {
 
                 GameCenterLeaderboardSection(
                     model: model,
-                    showsPlayerScopePicker: showsPlayerScopePicker
+                    showsPlayerScopePicker: showsPlayerScopePicker,
+                    refreshTrigger: dashboardRefreshTrigger
                 )
             }
             .padding()
@@ -63,7 +65,12 @@ public struct GameCenterDashboardView: View {
         .background(theme.colorScheme.surface.color)
         .materialTheme(theme)
         #if canImport(UIKit) && !os(watchOS)
-        .sheet(item: $systemDashboardMode) { mode in
+        .sheet(
+            item: $systemDashboardMode,
+            onDismiss: {
+                dashboardRefreshTrigger += 1
+            }
+        ) { mode in
             GameCenterSystemDashboardView(mode: mode) {
                 systemDashboardMode = nil
             }

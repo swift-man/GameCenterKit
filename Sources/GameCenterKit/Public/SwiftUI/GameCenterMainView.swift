@@ -28,6 +28,8 @@ public struct GameCenterGoalProgressInput: Identifiable, Equatable, Sendable {
 public struct GameCenterMainView: View {
     @StateObject private var model: GameCenterDashboardViewModel
     @State private var isGoalsPopupPresented = false
+    @State private var leaderboardRefreshTrigger = 0
+    @State private var achievementSyncTrigger = 0
     #if DEBUG
     @State private var isResettingAchievements = false
     @State private var resetAchievementsMessage: String?
@@ -40,6 +42,7 @@ public struct GameCenterMainView: View {
 
     #if DEBUG
     @Dependency(\.gameCenterAchievementClient) private var achievementClient
+    @Dependency(\.gameCenterAchievementProgressCache) private var achievementProgressCache
     #endif
 
     public init(
@@ -72,7 +75,9 @@ public struct GameCenterMainView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 if showsProfileChip {
-                    GameCenterNicknameView(detailText: localPlayerDetailText)
+                    GameCenterNicknameView(detailText: localPlayerDetailText) {
+                        leaderboardRefreshTrigger += 1
+                    }
                 }
 
                 if !goals.isEmpty {
@@ -83,7 +88,8 @@ public struct GameCenterMainView: View {
 
                 GameCenterLeaderboardSection(
                     model: model,
-                    showsPlayerScopePicker: showsPlayerScopePicker
+                    showsPlayerScopePicker: showsPlayerScopePicker,
+                    refreshTrigger: leaderboardRefreshTrigger
                 )
             }
             .padding()
@@ -138,7 +144,8 @@ public struct GameCenterMainView: View {
                             goal: input.goal,
                             currentValue: input.currentValue,
                             reportsAchievementOnCompletion: input.reportsAchievementOnCompletion,
-                            style: .square
+                            style: .square,
+                            syncTrigger: achievementSyncTrigger
                         )
                         .frame(width: 160)
                     }
@@ -258,9 +265,11 @@ public struct GameCenterMainView: View {
 
         do {
             try await achievementClient.resetAchievements()
+            await achievementProgressCache.invalidate()
+            achievementSyncTrigger += 1
             resetAchievementsMessage = "Achievements reset"
         } catch {
-            resetAchievementsMessage = "Achievement reset failed: \(error)"
+            resetAchievementsMessage = "Achievement reset failed: \(gameCenterDisplayMessage(for: error))"
         }
     }
     #endif

@@ -14,6 +14,7 @@ public struct GameCenterGoalProgressView: View {
     private let reportsAchievementOnCompletion: Bool
     private let style: GameCenterGoalProgressViewStyle
     private let theme: MaterialTheme?
+    private let syncTrigger: Int
 
     @State private var didReportAchievement = false
     @State private var isReportingAchievement = false
@@ -22,6 +23,7 @@ public struct GameCenterGoalProgressView: View {
     @Environment(\.materialTheme) private var materialTheme
     @Dependency(\.gameCenterAuthenticationClient) private var authenticationClient
     @Dependency(\.gameCenterAchievementClient) private var achievementClient
+    @Dependency(\.gameCenterAchievementProgressCache) private var achievementProgressCache
 
     private var effectiveTheme: MaterialTheme {
         theme ?? materialTheme
@@ -32,26 +34,30 @@ public struct GameCenterGoalProgressView: View {
         currentValue: Int,
         theme: MaterialTheme,
         reportsAchievementOnCompletion: Bool = true,
-        style: GameCenterGoalProgressViewStyle = .fullWidth
+        style: GameCenterGoalProgressViewStyle = .fullWidth,
+        syncTrigger: Int = 0
     ) {
         self.goal = goal
         self.currentValue = currentValue
         self.reportsAchievementOnCompletion = reportsAchievementOnCompletion
         self.style = style
         self.theme = theme
+        self.syncTrigger = syncTrigger
     }
 
     init(
         goal: GameCenterGoal,
         currentValue: Int,
         reportsAchievementOnCompletion: Bool = true,
-        style: GameCenterGoalProgressViewStyle = .fullWidth
+        style: GameCenterGoalProgressViewStyle = .fullWidth,
+        syncTrigger: Int = 0
     ) {
         self.goal = goal
         self.currentValue = currentValue
         self.reportsAchievementOnCompletion = reportsAchievementOnCompletion
         self.style = style
         self.theme = nil
+        self.syncTrigger = syncTrigger
     }
 
     public var body: some View {
@@ -220,7 +226,8 @@ public struct GameCenterGoalProgressView: View {
     private var achievementSyncID: AchievementSyncID {
         AchievementSyncID(
             achievementID: goal.achievementID,
-            isAuthenticated: authenticationClient.isAuthenticated
+            isAuthenticated: authenticationClient.isAuthenticated,
+            syncTrigger: syncTrigger
         )
     }
 
@@ -255,8 +262,9 @@ public struct GameCenterGoalProgressView: View {
                 showsCompletionBanner: true
             )
             didReportAchievement = true
+            await achievementProgressCache.invalidate()
         } catch {
-            errorMessage = String(describing: error)
+            errorMessage = gameCenterDisplayMessage(for: error)
         }
     }
 
@@ -267,8 +275,14 @@ public struct GameCenterGoalProgressView: View {
             return
         }
 
+        guard authenticationClient.isAuthenticated else {
+            didReportAchievement = false
+            await achievementProgressCache.invalidate()
+            return
+        }
+
         do {
-            let achievements = try await achievementClient.loadAchievements()
+            let achievements = try await achievementProgressCache.load(achievementClient)
             guard let progress = achievements.first(where: { $0.id == achievementID }) else {
                 didReportAchievement = false
                 return
@@ -284,4 +298,5 @@ public struct GameCenterGoalProgressView: View {
 private struct AchievementSyncID: Equatable {
     var achievementID: String?
     var isAuthenticated: Bool
+    var syncTrigger: Int
 }

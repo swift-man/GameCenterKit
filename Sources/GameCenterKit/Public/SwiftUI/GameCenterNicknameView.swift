@@ -7,11 +7,13 @@ public struct GameCenterNicknameView: View {
     private let theme: MaterialTheme?
     private let showsProfileButton: Bool
     private let detailText: String?
+    private let onProfileUpdated: @MainActor () -> Void
 
     @State private var player: GameCenterPlayer?
     @State private var playerPhoto: GameCenterPlayerPhoto?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var loadPlayerTrigger = 0
 
     #if canImport(UIKit) && !os(watchOS)
     @State private var showsProfile = false
@@ -25,16 +27,26 @@ public struct GameCenterNicknameView: View {
         theme ?? materialTheme
     }
 
-    public init(theme: MaterialTheme, showsProfileButton: Bool = true) {
+    public init(
+        theme: MaterialTheme,
+        showsProfileButton: Bool = true,
+        onProfileUpdated: @escaping @MainActor () -> Void = {}
+    ) {
         self.theme = theme
         self.showsProfileButton = showsProfileButton
         self.detailText = nil
+        self.onProfileUpdated = onProfileUpdated
     }
 
-    init(showsProfileButton: Bool = true, detailText: String? = nil) {
+    init(
+        showsProfileButton: Bool = true,
+        detailText: String? = nil,
+        onProfileUpdated: @escaping @MainActor () -> Void = {}
+    ) {
         self.theme = nil
         self.showsProfileButton = showsProfileButton
         self.detailText = detailText
+        self.onProfileUpdated = onProfileUpdated
     }
 
     public var body: some View {
@@ -59,7 +71,7 @@ public struct GameCenterNicknameView: View {
         .padding(.vertical, 10)
         .padding(.horizontal, 16)
         .gameCenterGlass(in: Capsule())
-        .task {
+        .task(id: loadPlayerTrigger) {
             await loadPlayer()
         }
         .gameCenterProvidedMaterialTheme(theme)
@@ -67,7 +79,8 @@ public struct GameCenterNicknameView: View {
         .sheet(
             isPresented: $showsProfile,
             onDismiss: {
-                Task { await loadPlayer() }
+                loadPlayerTrigger += 1
+                onProfileUpdated()
             }
         ) {
             GameCenterSystemDashboardView(mode: .profile) {
@@ -152,7 +165,7 @@ public struct GameCenterNicknameView: View {
         } catch {
             player = nil
             playerPhoto = nil
-            errorMessage = String(describing: error)
+            errorMessage = gameCenterDisplayMessage(for: error)
         }
     }
 
