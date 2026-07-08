@@ -22,6 +22,7 @@ public struct GameCenterGoalProgressView: View {
     @Environment(\.materialTheme) private var materialTheme
     @Dependency(\.gameCenterAuthenticationClient) private var authenticationClient
     @Dependency(\.gameCenterAchievementClient) private var achievementClient
+    @Dependency(\.gameCenterAchievementProgressCache) private var achievementProgressCache
 
     private var effectiveTheme: MaterialTheme {
         theme ?? materialTheme
@@ -255,8 +256,9 @@ public struct GameCenterGoalProgressView: View {
                 showsCompletionBanner: true
             )
             didReportAchievement = true
+            await achievementProgressCache.invalidate()
         } catch {
-            errorMessage = String(describing: error)
+            errorMessage = gameCenterDisplayMessage(for: error)
         }
     }
 
@@ -267,8 +269,14 @@ public struct GameCenterGoalProgressView: View {
             return
         }
 
+        guard authenticationClient.isAuthenticated else {
+            didReportAchievement = false
+            await achievementProgressCache.invalidate()
+            return
+        }
+
         do {
-            let achievements = try await achievementClient.loadAchievements()
+            let achievements = try await achievementProgressCache.load(achievementClient)
             guard let progress = achievements.first(where: { $0.id == achievementID }) else {
                 didReportAchievement = false
                 return

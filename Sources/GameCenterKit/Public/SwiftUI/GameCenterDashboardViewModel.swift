@@ -123,7 +123,7 @@ public final class GameCenterDashboardViewModel: ObservableObject {
             player = nil
             playerPhoto = nil
             snapshot = nil
-            errorMessage = String(describing: error)
+            errorMessage = gameCenterDisplayMessage(for: error)
         }
     }
 

@@ -2,6 +2,23 @@
 
 All notable changes to GameCenterKit will be documented in this file.
 
+## [0.2.1] - 2026-07-08
+
+### Added
+
+- Added README badges for Swift, SwiftUI, package version, SPM compatibility, and supported platforms.
+
+### Changed
+
+- Added a short-lived achievement progress cache to reduce duplicate GameKit achievement loads across simultaneous goal cards.
+- Replaced raw Swift error descriptions in SwiftUI surfaces with user-facing Game Center error messages.
+- Normalized empty leaderboard category configuration to the default category to avoid empty selected category IDs.
+- Reworked nickname profile refresh after dismissing the Game Center profile sheet to use structured SwiftUI task invalidation.
+
+### Fixed
+
+- Invalidated cached achievement progress after achievement reports, DEBUG achievement reset, and authentication loss so stale completion state is not shown.
+
 ## [0.2.0] - 2026-07-08
 
 ### Added

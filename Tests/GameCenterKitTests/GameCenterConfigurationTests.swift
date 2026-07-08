@@ -62,6 +62,20 @@ final class GameCenterConfigurationTests: XCTestCase {
         XCTAssertNil(configuration.leaderboardID(for: .daily, categoryID: "missing"))
     }
 
+    func testEmptyLeaderboardCategoriesNormalizeToDefaultCategory() {
+        var configuration = GameCenterConfiguration(leaderboardCategories: [])
+
+        XCTAssertEqual(configuration.leaderboardCategories.count, 1)
+        XCTAssertEqual(configuration.leaderboardCategories[0].id, GameCenterLeaderboardCategory.defaultID)
+        XCTAssertEqual(configuration.leaderboardCategories[0].title, GameCenterLeaderboardCategory.defaultTitle)
+        XCTAssertNil(configuration.leaderboardID(for: .daily))
+
+        configuration.leaderboardCategories = []
+
+        XCTAssertEqual(configuration.leaderboardCategories.count, 1)
+        XCTAssertEqual(configuration.leaderboardCategories[0].id, GameCenterLeaderboardCategory.defaultID)
+    }
+
     func testRankingScopeAllCasesExcludesDeprecatedMonthlyScope() {
         XCTAssertEqual(GameCenterRankingScope.allCases, [.daily, .weekly, .allTime])
     }

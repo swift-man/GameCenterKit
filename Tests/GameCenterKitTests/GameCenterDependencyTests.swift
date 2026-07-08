@@ -227,7 +227,7 @@ final class GameCenterDependencyTests: XCTestCase {
             XCTAssertNil(model.player)
             XCTAssertNil(model.playerPhoto)
             XCTAssertNil(model.snapshot)
-            XCTAssertNotNil(model.errorMessage)
+            XCTAssertEqual(model.errorMessage, "주간 랭킹이 설정되지 않았습니다.")
         }
     }
 }

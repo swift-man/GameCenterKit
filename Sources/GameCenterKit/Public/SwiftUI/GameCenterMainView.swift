@@ -40,6 +40,7 @@ public struct GameCenterMainView: View {
 
     #if DEBUG
     @Dependency(\.gameCenterAchievementClient) private var achievementClient
+    @Dependency(\.gameCenterAchievementProgressCache) private var achievementProgressCache
     #endif
 
     public init(
@@ -258,9 +259,10 @@ public struct GameCenterMainView: View {
 
         do {
             try await achievementClient.resetAchievements()
+            await achievementProgressCache.invalidate()
             resetAchievementsMessage = "Achievements reset"
         } catch {
-            resetAchievementsMessage = "Achievement reset failed: \(error)"
+            resetAchievementsMessage = "Achievement reset failed: \(gameCenterDisplayMessage(for: error))"
         }
     }
     #endif

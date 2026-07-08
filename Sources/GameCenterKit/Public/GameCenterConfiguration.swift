@@ -31,7 +31,13 @@ public struct GameCenterLeaderboardCategory: Identifiable, Equatable, Sendable {
 }
 
 public struct GameCenterConfiguration: Equatable, Sendable {
-    public var leaderboardCategories: [GameCenterLeaderboardCategory]
+    public var leaderboardCategories: [GameCenterLeaderboardCategory] {
+        didSet {
+            if leaderboardCategories.isEmpty {
+                leaderboardCategories = [Self.defaultLeaderboardCategory(leaderboardIDs: [:])]
+            }
+        }
+    }
     public var goalAchievements: [String: String]
 
     public var leaderboardIDs: [GameCenterRankingScope: String] {
@@ -58,11 +64,7 @@ public struct GameCenterConfiguration: Equatable, Sendable {
         goalAchievements: [String: String] = [:]
     ) {
         self.leaderboardCategories = [
-            GameCenterLeaderboardCategory(
-                id: GameCenterLeaderboardCategory.defaultID,
-                title: GameCenterLeaderboardCategory.defaultTitle,
-                leaderboardIDs: leaderboardIDs
-            ),
+            Self.defaultLeaderboardCategory(leaderboardIDs: leaderboardIDs),
         ]
         self.goalAchievements = goalAchievements
     }
@@ -71,7 +73,7 @@ public struct GameCenterConfiguration: Equatable, Sendable {
         leaderboardCategories: [GameCenterLeaderboardCategory],
         goalAchievements: [String: String] = [:]
     ) {
-        self.leaderboardCategories = leaderboardCategories
+        self.leaderboardCategories = Self.normalizedLeaderboardCategories(leaderboardCategories)
         self.goalAchievements = goalAchievements
     }
 
@@ -93,6 +95,26 @@ public struct GameCenterConfiguration: Equatable, Sendable {
 
     public func achievementID(for goalID: String) -> String? {
         goalAchievements[goalID]
+    }
+
+    private static func normalizedLeaderboardCategories(
+        _ leaderboardCategories: [GameCenterLeaderboardCategory]
+    ) -> [GameCenterLeaderboardCategory] {
+        if leaderboardCategories.isEmpty {
+            return [defaultLeaderboardCategory(leaderboardIDs: [:])]
+        }
+
+        return leaderboardCategories
+    }
+
+    private static func defaultLeaderboardCategory(
+        leaderboardIDs: [GameCenterRankingScope: String]
+    ) -> GameCenterLeaderboardCategory {
+        GameCenterLeaderboardCategory(
+            id: GameCenterLeaderboardCategory.defaultID,
+            title: GameCenterLeaderboardCategory.defaultTitle,
+            leaderboardIDs: leaderboardIDs
+        )
     }
 }
 
