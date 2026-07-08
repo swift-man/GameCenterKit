@@ -20,6 +20,7 @@ public struct GameCenterGoalProgressView: View {
     @State private var errorMessage: String?
 
     @Environment(\.materialTheme) private var materialTheme
+    @Dependency(\.gameCenterAuthenticationClient) private var authenticationClient
     @Dependency(\.gameCenterAchievementClient) private var achievementClient
 
     private var effectiveTheme: MaterialTheme {
@@ -55,7 +56,7 @@ public struct GameCenterGoalProgressView: View {
 
     public var body: some View {
         content
-            .task(id: goal.achievementID) {
+            .task(id: achievementSyncID) {
                 await syncReportedAchievementState()
             }
             .gameCenterProvidedMaterialTheme(theme)
@@ -216,6 +217,13 @@ public struct GameCenterGoalProgressView: View {
         reportsAchievementOnCompletion && isCompleted && goal.achievementID != nil
     }
 
+    private var achievementSyncID: AchievementSyncID {
+        AchievementSyncID(
+            achievementID: goal.achievementID,
+            isAuthenticated: authenticationClient.isAuthenticated
+        )
+    }
+
     private var progressPercentText: String {
         "\(Int((progress * 100).rounded()))%"
     }
@@ -269,4 +277,9 @@ public struct GameCenterGoalProgressView: View {
             return
         }
     }
+}
+
+private struct AchievementSyncID: Equatable {
+    var achievementID: String?
+    var isAuthenticated: Bool
 }
