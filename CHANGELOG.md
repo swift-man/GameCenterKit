@@ -14,10 +14,13 @@ All notable changes to GameCenterKit will be documented in this file.
 - Replaced raw Swift error descriptions in SwiftUI surfaces with user-facing Game Center error messages.
 - Normalized empty leaderboard category configuration to the default category to avoid empty selected category IDs.
 - Reworked nickname profile refresh after dismissing the Game Center profile sheet to use structured SwiftUI task invalidation.
+- Propagated profile sheet dismissals to leaderboard refresh triggers so parent dashboard data can resync after Game Center account changes.
 
 ### Fixed
 
 - Invalidated cached achievement progress after achievement reports, DEBUG achievement reset, and authentication loss so stale completion state is not shown.
+- Prevented invalidated in-flight achievement loads from repopulating the progress cache after a reset or report race.
+- Resynced goal cards after DEBUG achievement reset so local completion state follows the cleared Game Center achievement state.
 
 ## [0.2.0] - 2026-07-08
 

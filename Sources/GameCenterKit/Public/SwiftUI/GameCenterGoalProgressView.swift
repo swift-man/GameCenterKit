@@ -14,6 +14,7 @@ public struct GameCenterGoalProgressView: View {
     private let reportsAchievementOnCompletion: Bool
     private let style: GameCenterGoalProgressViewStyle
     private let theme: MaterialTheme?
+    private let syncTrigger: Int
 
     @State private var didReportAchievement = false
     @State private var isReportingAchievement = false
@@ -33,26 +34,30 @@ public struct GameCenterGoalProgressView: View {
         currentValue: Int,
         theme: MaterialTheme,
         reportsAchievementOnCompletion: Bool = true,
-        style: GameCenterGoalProgressViewStyle = .fullWidth
+        style: GameCenterGoalProgressViewStyle = .fullWidth,
+        syncTrigger: Int = 0
     ) {
         self.goal = goal
         self.currentValue = currentValue
         self.reportsAchievementOnCompletion = reportsAchievementOnCompletion
         self.style = style
         self.theme = theme
+        self.syncTrigger = syncTrigger
     }
 
     init(
         goal: GameCenterGoal,
         currentValue: Int,
         reportsAchievementOnCompletion: Bool = true,
-        style: GameCenterGoalProgressViewStyle = .fullWidth
+        style: GameCenterGoalProgressViewStyle = .fullWidth,
+        syncTrigger: Int = 0
     ) {
         self.goal = goal
         self.currentValue = currentValue
         self.reportsAchievementOnCompletion = reportsAchievementOnCompletion
         self.style = style
         self.theme = nil
+        self.syncTrigger = syncTrigger
     }
 
     public var body: some View {
@@ -221,7 +226,8 @@ public struct GameCenterGoalProgressView: View {
     private var achievementSyncID: AchievementSyncID {
         AchievementSyncID(
             achievementID: goal.achievementID,
-            isAuthenticated: authenticationClient.isAuthenticated
+            isAuthenticated: authenticationClient.isAuthenticated,
+            syncTrigger: syncTrigger
         )
     }
 
@@ -292,4 +298,5 @@ public struct GameCenterGoalProgressView: View {
 private struct AchievementSyncID: Equatable {
     var achievementID: String?
     var isAuthenticated: Bool
+    var syncTrigger: Int
 }

@@ -2,7 +2,7 @@
 
 ![Badge - Swift](https://img.shields.io/badge/Swift-6.0-white.svg?style=flat-square&logo=Swift)
 ![Badge - SwiftUI](https://img.shields.io/badge/SwiftUI-001b87.svg?style=flat-square&logo=Swift&logoColor=black)
-![Badge - Version](https://img.shields.io/badge/Version-0.2.0-1177AA?style=flat-square)
+![Badge - Version](https://img.shields.io/badge/Version-0.2.1-1177AA?style=flat-square)
 ![Badge - Swift Package Manager](https://img.shields.io/badge/SPM-compatible-orange?style=flat-square)
 ![Badge - Platform](https://img.shields.io/badge/macOS-v12.0-yellow?style=flat-square)
 ![Badge - Platform](https://img.shields.io/badge/iOS-v15.0-yellow?style=flat-square)

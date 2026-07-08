@@ -7,6 +7,7 @@ public struct GameCenterNicknameView: View {
     private let theme: MaterialTheme?
     private let showsProfileButton: Bool
     private let detailText: String?
+    private let onProfileUpdated: @MainActor () -> Void
 
     @State private var player: GameCenterPlayer?
     @State private var playerPhoto: GameCenterPlayerPhoto?
@@ -26,16 +27,26 @@ public struct GameCenterNicknameView: View {
         theme ?? materialTheme
     }
 
-    public init(theme: MaterialTheme, showsProfileButton: Bool = true) {
+    public init(
+        theme: MaterialTheme,
+        showsProfileButton: Bool = true,
+        onProfileUpdated: @escaping @MainActor () -> Void = {}
+    ) {
         self.theme = theme
         self.showsProfileButton = showsProfileButton
         self.detailText = nil
+        self.onProfileUpdated = onProfileUpdated
     }
 
-    init(showsProfileButton: Bool = true, detailText: String? = nil) {
+    init(
+        showsProfileButton: Bool = true,
+        detailText: String? = nil,
+        onProfileUpdated: @escaping @MainActor () -> Void = {}
+    ) {
         self.theme = nil
         self.showsProfileButton = showsProfileButton
         self.detailText = detailText
+        self.onProfileUpdated = onProfileUpdated
     }
 
     public var body: some View {
@@ -69,6 +80,7 @@ public struct GameCenterNicknameView: View {
             isPresented: $showsProfile,
             onDismiss: {
                 loadPlayerTrigger += 1
+                onProfileUpdated()
             }
         ) {
             GameCenterSystemDashboardView(mode: .profile) {

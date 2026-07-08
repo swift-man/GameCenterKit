@@ -32,9 +32,17 @@ actor GameCenterAchievementProgressStore {
         var expiresAt: Date
     }
 
+    private struct InFlightLoad {
+        var id: Int
+        var generation: Int
+        var task: Task<[GameCenterAchievementProgress], Error>
+    }
+
     private let ttl: TimeInterval
     private var cacheEntry: CacheEntry?
-    private var inFlightTask: Task<[GameCenterAchievementProgress], Error>?
+    private var inFlightLoad: InFlightLoad?
+    private var nextLoadID = 0
+    private var invalidationGeneration = 0
 
     init(ttl: TimeInterval = 3) {
         self.ttl = ttl
@@ -46,30 +54,54 @@ actor GameCenterAchievementProgressStore {
             return cacheEntry.achievements
         }
 
-        if let inFlightTask {
-            return try await inFlightTask.value
+        if let inFlightLoad {
+            return try await achievements(from: inFlightLoad)
         }
 
+        let generation = invalidationGeneration
+        let loadID = nextLoadID
+        nextLoadID += 1
         let task = Task {
             try await client.loadAchievements()
         }
-        inFlightTask = task
+        let inFlightLoad = InFlightLoad(
+            id: loadID,
+            generation: generation,
+            task: task
+        )
+        self.inFlightLoad = inFlightLoad
 
         do {
-            let achievements = try await task.value
-            cacheEntry = CacheEntry(
-                achievements: achievements,
-                expiresAt: Date().addingTimeInterval(ttl)
-            )
-            inFlightTask = nil
+            let achievements = try await achievements(from: inFlightLoad)
+            if self.inFlightLoad?.id == loadID {
+                cacheEntry = CacheEntry(
+                    achievements: achievements,
+                    expiresAt: Date().addingTimeInterval(ttl)
+                )
+                self.inFlightLoad = nil
+            }
             return achievements
         } catch {
-            inFlightTask = nil
+            if self.inFlightLoad?.id == loadID {
+                self.inFlightLoad = nil
+            }
             throw error
         }
     }
 
     func invalidate() {
+        invalidationGeneration += 1
         cacheEntry = nil
+        inFlightLoad?.task.cancel()
+        inFlightLoad = nil
+    }
+
+    private func achievements(from inFlightLoad: InFlightLoad) async throws -> [GameCenterAchievementProgress] {
+        let achievements = try await inFlightLoad.task.value
+        guard inFlightLoad.generation == invalidationGeneration else {
+            throw CancellationError()
+        }
+
+        return achievements
     }
 }
