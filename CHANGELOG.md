@@ -2,6 +2,17 @@
 
 All notable changes to GameCenterKit will be documented in this file.
 
+## [0.2.2] - 2026-07-11
+
+### Added
+
+- Added English and Korean package resources for Game Center accessibility labels and values.
+
+### Fixed
+
+- Made VoiceOver labels follow the host app's preferred language instead of always using Korean.
+- Localized leaderboard ranks and goal progress as complete phrases so each language can use its natural word order.
+
 ## [0.2.1] - 2026-07-08
 
 ### Added
