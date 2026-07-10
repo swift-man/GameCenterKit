@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 @testable import GameCenterKit
 
@@ -60,6 +61,19 @@ final class GameCenterClientErrorMessagesTests: XCTestCase {
                 "Unable to complete the Game Center request.",
                 "Game Center 요청을 완료하지 못했습니다.",
             ].contains(gameCenterDisplayMessage(for: PlainTestError.failed))
+        )
+    }
+
+    func testDisplayMessageFallsBackForNSError() {
+        XCTAssertTrue(
+            [
+                "Unable to complete the Game Center request.",
+                "Game Center 요청을 완료하지 못했습니다.",
+            ].contains(
+                gameCenterDisplayMessage(
+                    for: NSError(domain: "GameCenterKitTests", code: 1)
+                )
+            )
         )
     }
 }

@@ -150,7 +150,7 @@ final class GameCenterLocalizedStringTests: XCTestCase {
                 localization: "en",
                 2,
                 "Player",
-                "500"
+                "500 points"
             ),
             "Rank 2, Player, 500 points"
         )
@@ -160,7 +160,7 @@ final class GameCenterLocalizedStringTests: XCTestCase {
                 localization: "ko",
                 2,
                 "Player",
-                "500"
+                "500점"
             ),
             "2위, Player, 500점"
         )
@@ -170,9 +170,9 @@ final class GameCenterLocalizedStringTests: XCTestCase {
                 localization: "en",
                 1,
                 "Player",
-                "1,000"
+                "1 point"
             ),
-            "Rank 1, current player, Player, 1,000 points"
+            "Rank 1, current player, Player, 1 point"
         )
         XCTAssertEqual(
             GameCenterLocalizedString.format(
@@ -180,7 +180,7 @@ final class GameCenterLocalizedStringTests: XCTestCase {
                 localization: "ko",
                 1,
                 "Player",
-                "1,000"
+                "1,000점"
             ),
             "1위, 나, Player, 1,000점"
         )
