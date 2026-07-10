@@ -102,7 +102,11 @@ public struct GameCenterGoalProgressView: View {
 
             HStack {
                 Label(
-                    isCompleted ? "목표 달성" : "진행 중",
+                    GameCenterLocalizedString.string(
+                        isCompleted
+                            ? "ui.goal.status.completed"
+                            : "ui.goal.status.in_progress"
+                    ),
                     systemImage: isCompleted ? "checkmark.seal.fill" : "flame"
                 )
                 .font(.footnote)
@@ -118,7 +122,13 @@ public struct GameCenterGoalProgressView: View {
                         if isReportingAchievement {
                             reportingPlaceholder(width: 68, height: 18)
                         } else {
-                            Text(didReportAchievement ? "완료됨" : "달성 보고")
+                            Text(
+                                GameCenterLocalizedString.string(
+                                    didReportAchievement
+                                        ? "ui.goal.action.completed"
+                                        : "ui.goal.action.report"
+                                )
+                            )
                         }
                     }
                     .gameCenterGlassButton(isProminent: true)
@@ -181,7 +191,11 @@ public struct GameCenterGoalProgressView: View {
                         reportingPlaceholder(width: 62, height: 16)
                     } else {
                         Label(
-                            didReportAchievement ? "완료됨" : "달성 보고",
+                            GameCenterLocalizedString.string(
+                                didReportAchievement
+                                    ? "ui.goal.action.completed"
+                                    : "ui.goal.action.report"
+                            ),
                             systemImage: didReportAchievement ? "checkmark" : "arrow.up.circle"
                         )
                         .font(.caption2.weight(.semibold))

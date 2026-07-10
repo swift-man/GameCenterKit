@@ -20,7 +20,7 @@ struct GameCenterLeaderboardRow: View {
                 .lineLimit(1)
 
             if isLocalPlayer {
-                Text("나")
+                Text(GameCenterLocalizedString.string("ui.leaderboard.current_player_badge"))
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(scheme.onPrimary.color)
                     .padding(.horizontal, 7)

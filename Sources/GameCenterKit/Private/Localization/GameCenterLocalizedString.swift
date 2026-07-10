@@ -18,7 +18,7 @@ enum GameCenterLocalizedString {
     ) -> String {
         String(
             format: string(key, localization: localization, bundle: bundle),
-            locale: Locale.current,
+            locale: localization.map(Locale.init(identifier:)) ?? .current,
             arguments: arguments
         )
     }

@@ -7,7 +7,7 @@ func gameCenterDisplayMessage(for error: Error) -> String {
 
     let localizedDescription = (error as NSError).localizedDescription
     if localizedDescription.isEmpty {
-        return "Game Center 요청을 완료하지 못했습니다."
+        return GameCenterLocalizedString.string("error.request_failed")
     }
 
     return localizedDescription

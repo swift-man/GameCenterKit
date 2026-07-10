@@ -126,7 +126,10 @@ public struct GameCenterNicknameView: View {
             )
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(player?.displayName ?? "닉네임 없음")
+                Text(
+                    player?.displayName
+                        ?? GameCenterLocalizedString.string("ui.nickname.none")
+                )
                     .font(.headline)
                     .foregroundStyle(scheme.onSurface.color)
                     .lineLimit(1)

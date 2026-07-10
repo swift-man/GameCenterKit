@@ -52,13 +52,16 @@ struct GameCenterLeaderboardSection: View {
         let scheme = materialTheme.colorScheme
 
         return HStack(spacing: 8) {
-            Text("종류")
+            Text(GameCenterLocalizedString.string("ui.leaderboard.category"))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(scheme.onSurfaceVariant.color)
 
             Spacer(minLength: 8)
 
-            Picker("랭킹 종류", selection: $model.selectedCategoryID) {
+            Picker(
+                GameCenterLocalizedString.string("ui.leaderboard.category_picker"),
+                selection: $model.selectedCategoryID
+            ) {
                 ForEach(model.leaderboardCategories) { category in
                     Text(category.title).tag(category.id)
                 }
@@ -70,7 +73,10 @@ struct GameCenterLeaderboardSection: View {
     }
 
     private var rankingPicker: some View {
-        Picker("랭킹", selection: $model.selectedScope) {
+        Picker(
+            GameCenterLocalizedString.string("ui.leaderboard.scope_picker"),
+            selection: $model.selectedScope
+        ) {
             ForEach(GameCenterRankingScope.allCases) { scope in
                 Text(scope.title).tag(scope)
             }
@@ -80,7 +86,10 @@ struct GameCenterLeaderboardSection: View {
     }
 
     private var playerScopePicker: some View {
-        Picker("범위", selection: $model.playerScope) {
+        Picker(
+            GameCenterLocalizedString.string("ui.leaderboard.player_scope_picker"),
+            selection: $model.playerScope
+        ) {
             ForEach(GameCenterPlayerScope.allCases) { scope in
                 Text(scope.title).tag(scope)
             }
@@ -97,7 +106,7 @@ struct GameCenterLeaderboardSection: View {
             skeleton
         } else if let errorMessage = model.errorMessage {
             GameCenterEmptyStateView(
-                title: "불러오기 실패",
+                title: GameCenterLocalizedString.string("ui.leaderboard.load_failed"),
                 systemImage: "exclamationmark.triangle",
                 message: errorMessage
             )
@@ -122,7 +131,7 @@ struct GameCenterLeaderboardSection: View {
             }
         } else {
             GameCenterEmptyStateView(
-                title: "랭킹 없음",
+                title: GameCenterLocalizedString.string("ui.leaderboard.empty"),
                 systemImage: "trophy",
                 message: nil
             )

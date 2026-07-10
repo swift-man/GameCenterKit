@@ -12,8 +12,10 @@ Swift Package for reusable Game Center interfaces.
 
 ## Localization
 
-GameCenterKit includes English and Korean accessibility strings. VoiceOver labels
-and values follow the host app's preferred localization and fall back to English.
+GameCenterKit includes English and Korean strings for its built-in interface and
+accessibility output. UI text, VoiceOver labels, and values follow the host app's
+preferred localization and fall back to English. App-provided leaderboard category
+titles and goal titles remain under the app's localization control.
 
 ## Usage
 

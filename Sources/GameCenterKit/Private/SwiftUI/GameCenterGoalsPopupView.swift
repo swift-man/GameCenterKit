@@ -38,7 +38,10 @@ struct GameCenterGoalsPopupView: View {
         let scheme = materialTheme.colorScheme
 
         return HStack(spacing: 12) {
-            Label("목표 달성", systemImage: "target")
+            Label(
+                GameCenterLocalizedString.string("ui.goals.completion_title"),
+                systemImage: "target"
+            )
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(scheme.onSurface.color)
                 .labelStyle(.titleAndIcon)
