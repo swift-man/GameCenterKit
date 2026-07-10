@@ -2,7 +2,7 @@
 
 All notable changes to GameCenterKit will be documented in this file.
 
-## [0.2.2] - 2026-07-11
+## [0.3.0] - 2026-07-11
 
 ### Added
 
@@ -12,6 +12,7 @@ All notable changes to GameCenterKit will be documented in this file.
 
 - Made built-in UI and VoiceOver output follow the host app's preferred language instead of always using Korean.
 - Localized leaderboard ranks and goal progress as complete phrases so each language can use its natural word order.
+- Preserved Game Center formatted score units and pluralization in VoiceOver output without appending duplicate units.
 
 ## [0.2.1] - 2026-07-08
 
