@@ -109,7 +109,7 @@ public struct GameCenterDashboardView: View {
                         .imageScale(.large)
                 }
                 .gameCenterGlassButton()
-                .accessibilityLabel("Game Center 프로필")
+                .accessibilityLabel(GameCenterLocalizedString.string("accessibility.profile"))
             }
             #endif
         }

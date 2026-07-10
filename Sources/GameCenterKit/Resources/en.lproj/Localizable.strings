@@ -1,0 +1,7 @@
+"accessibility.debug.menu" = "Game Center debug menu";
+"accessibility.goals.button" = "Goal completion";
+"accessibility.goals.value" = "%1$d of %2$d goals completed";
+"accessibility.leaderboard_row" = "Rank %1$d, %2$@, %3$@ points";
+"accessibility.leaderboard_row.current_player" = "Rank %1$d, current player, %2$@, %3$@ points";
+"accessibility.nickname.settings" = "Game Center nickname settings";
+"accessibility.profile" = "Game Center profile";

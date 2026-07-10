@@ -1,0 +1,7 @@
+"accessibility.debug.menu" = "Game Center 디버그 메뉴";
+"accessibility.goals.button" = "목표 달성";
+"accessibility.goals.value" = "목표 %2$d개 중 %1$d개 완료";
+"accessibility.leaderboard_row" = "%1$d위, %2$@, %3$@점";
+"accessibility.leaderboard_row.current_player" = "%1$d위, 나, %2$@, %3$@점";
+"accessibility.nickname.settings" = "Game Center 닉네임 설정";
+"accessibility.profile" = "Game Center 프로필";

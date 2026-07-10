@@ -174,8 +174,14 @@ public struct GameCenterMainView: View {
                 goalsButtonLabel
             }
             .gameCenterGlassButton(isProminent: completedGoalCount == goals.count)
-            .accessibilityLabel("목표 달성")
-            .accessibilityValue("\(completedGoalCount)/\(goals.count)")
+            .accessibilityLabel(GameCenterLocalizedString.string("accessibility.goals.button"))
+            .accessibilityValue(
+                GameCenterLocalizedString.format(
+                    "accessibility.goals.value",
+                    completedGoalCount,
+                    goals.count
+                )
+            )
         }
     }
 
@@ -244,7 +250,7 @@ public struct GameCenterMainView: View {
                 .imageScale(.large)
         }
         .gameCenterGlassButton()
-        .accessibilityLabel("Game Center 디버그 메뉴")
+        .accessibilityLabel(GameCenterLocalizedString.string("accessibility.debug.menu"))
     }
 
     private var resetAchievementsMessageBinding: Binding<Bool> {

@@ -64,7 +64,7 @@ public struct GameCenterNicknameView: View {
                         .imageScale(.large)
                 }
                 .gameCenterGlassButton()
-                .accessibilityLabel("Game Center 닉네임 설정")
+                .accessibilityLabel(GameCenterLocalizedString.string("accessibility.nickname.settings"))
             }
             #endif
         }

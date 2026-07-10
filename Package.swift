@@ -4,6 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "GameCenterKit",
+    defaultLocalization: "en",
     platforms: [
         .iOS(.v15),
         .macOS(.v12),
@@ -27,6 +28,9 @@ let package = Package(
                 .product(name: "Dependencies", package: "swift-dependencies"),
                 .product(name: "MaterialDesignColorSwiftUI", package: "MaterialDesignColor"),
                 .product(name: "ShimmerUI", package: "ShimmerUI"),
+            ],
+            resources: [
+                .process("Resources"),
             ]
         ),
         .testTarget(
