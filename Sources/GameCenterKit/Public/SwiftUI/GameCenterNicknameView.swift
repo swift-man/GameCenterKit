@@ -64,7 +64,7 @@ public struct GameCenterNicknameView: View {
                         .imageScale(.large)
                 }
                 .gameCenterGlassButton()
-                .accessibilityLabel("Game Center 닉네임 설정")
+                .accessibilityLabel(GameCenterLocalizedString.string("accessibility.nickname.settings"))
             }
             #endif
         }
@@ -126,7 +126,10 @@ public struct GameCenterNicknameView: View {
             )
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(player?.displayName ?? "닉네임 없음")
+                Text(
+                    player?.displayName
+                        ?? GameCenterLocalizedString.string("ui.nickname.none")
+                )
                     .font(.headline)
                     .foregroundStyle(scheme.onSurface.color)
                     .lineLimit(1)
@@ -143,7 +146,7 @@ public struct GameCenterNicknameView: View {
                         .gameCenterNumericTransition()
                         .animation(.default, value: detailText)
                 } else if player != nil {
-                    Text("Game Center")
+                    Text(GameCenterLocalizedString.string("ui.game_center"))
                         .font(.caption)
                         .foregroundStyle(scheme.onSurfaceVariant.color)
                 }

@@ -20,7 +20,7 @@ struct GameCenterLeaderboardRow: View {
                 .lineLimit(1)
 
             if isLocalPlayer {
-                Text("나")
+                Text(GameCenterLocalizedString.string("ui.leaderboard.current_player_badge"))
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(scheme.onPrimary.color)
                     .padding(.horizontal, 7)
@@ -52,8 +52,21 @@ struct GameCenterLeaderboardRow: View {
     }
 
     private var accessibilityLabel: String {
-        let mine = isLocalPlayer ? ", 나" : ""
-        return "\(entry.rank)위\(mine), \(entry.displayName), \(entry.formattedScore)점"
+        if isLocalPlayer {
+            return GameCenterLocalizedString.format(
+                "accessibility.leaderboard_row.current_player",
+                entry.rank,
+                entry.displayName,
+                entry.formattedScore
+            )
+        }
+
+        return GameCenterLocalizedString.format(
+            "accessibility.leaderboard_row",
+            entry.rank,
+            entry.displayName,
+            entry.formattedScore
+        )
     }
 }
 

@@ -85,7 +85,10 @@ public struct GameCenterDashboardView: View {
             GameCenterPlayerAvatarView(photo: model.playerPhoto)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(model.player?.displayName ?? "Game Center")
+                Text(
+                    model.player?.displayName
+                        ?? GameCenterLocalizedString.string("ui.nickname.none")
+                )
                     .font(.headline)
                     .foregroundStyle(scheme.onSurface.color)
 
@@ -109,7 +112,7 @@ public struct GameCenterDashboardView: View {
                         .imageScale(.large)
                 }
                 .gameCenterGlassButton()
-                .accessibilityLabel("Game Center 프로필")
+                .accessibilityLabel(GameCenterLocalizedString.string("accessibility.profile"))
             }
             #endif
         }

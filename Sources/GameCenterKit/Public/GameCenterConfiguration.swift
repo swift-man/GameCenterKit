@@ -2,7 +2,9 @@ import Foundation
 
 public struct GameCenterLeaderboardCategory: Identifiable, Equatable, Sendable {
     static let defaultID = "default"
-    static let defaultTitle = "랭킹"
+    static var defaultTitle: String {
+        GameCenterLocalizedString.string("ui.leaderboard.title")
+    }
 
     public var id: String
     public var title: String
@@ -135,16 +137,7 @@ public enum GameCenterRankingScope: String, CaseIterable, Identifiable, Sendable
     public var id: String { rawValue }
 
     public var title: String {
-        switch self {
-        case .daily:
-            return "일일"
-        case .weekly:
-            return "주간"
-        case .allTime:
-            return "전체"
-        case .monthly:
-            return "전체"
-        }
+        gameCenterRankingScopeTitle(self)
     }
 }
 
@@ -155,11 +148,6 @@ public enum GameCenterPlayerScope: String, CaseIterable, Identifiable, Sendable 
     public var id: String { rawValue }
 
     public var title: String {
-        switch self {
-        case .global:
-            return "전체"
-        case .friendsOnly:
-            return "친구"
-        }
+        gameCenterPlayerScopeTitle(self)
     }
 }

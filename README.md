@@ -2,13 +2,20 @@
 
 ![Badge - Swift](https://img.shields.io/badge/Swift-6.0-white.svg?style=flat-square&logo=Swift)
 ![Badge - SwiftUI](https://img.shields.io/badge/SwiftUI-001b87.svg?style=flat-square&logo=Swift&logoColor=black)
-![Badge - Version](https://img.shields.io/badge/Version-0.2.1-1177AA?style=flat-square)
+![Badge - Version](https://img.shields.io/badge/Version-0.3.0-1177AA?style=flat-square)
 ![Badge - Swift Package Manager](https://img.shields.io/badge/SPM-compatible-orange?style=flat-square)
 ![Badge - Platform](https://img.shields.io/badge/macOS-v12.0-yellow?style=flat-square)
 ![Badge - Platform](https://img.shields.io/badge/iOS-v15.0-yellow?style=flat-square)
 ![Badge - Platform](https://img.shields.io/badge/visionOS-v1.0-yellow?style=flat-square)
 
 Swift Package for reusable Game Center interfaces.
+
+## Localization
+
+GameCenterKit includes English and Korean strings for its built-in interface and
+accessibility output. UI text, VoiceOver labels, and values follow the host app's
+preferred localization and fall back to English. App-provided leaderboard category
+titles and goal titles remain under the app's localization control.
 
 ## Usage
 

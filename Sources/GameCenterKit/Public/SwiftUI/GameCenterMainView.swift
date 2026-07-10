@@ -84,7 +84,7 @@ public struct GameCenterMainView: View {
                     missionsSection
                 }
 
-                sectionHeader("리더보드")
+                sectionHeader(GameCenterLocalizedString.string("ui.leaderboard.section_title"))
 
                 GameCenterLeaderboardSection(
                     model: model,
@@ -114,10 +114,10 @@ public struct GameCenterMainView: View {
         }
         #if DEBUG
         .alert(
-            "Game Center Debug",
+            GameCenterLocalizedString.string("ui.debug.title"),
             isPresented: resetAchievementsMessageBinding
         ) {
-            Button("확인", role: .cancel) {
+            Button(GameCenterLocalizedString.string("ui.action.confirm"), role: .cancel) {
                 resetAchievementsMessage = nil
             }
         } message: {
@@ -135,7 +135,7 @@ public struct GameCenterMainView: View {
 
     private var missionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("미션")
+            sectionHeader(GameCenterLocalizedString.string("ui.missions.title"))
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
@@ -174,8 +174,14 @@ public struct GameCenterMainView: View {
                 goalsButtonLabel
             }
             .gameCenterGlassButton(isProminent: completedGoalCount == goals.count)
-            .accessibilityLabel("목표 달성")
-            .accessibilityValue("\(completedGoalCount)/\(goals.count)")
+            .accessibilityLabel(GameCenterLocalizedString.string("accessibility.goals.button"))
+            .accessibilityValue(
+                GameCenterLocalizedString.format(
+                    "accessibility.goals.value",
+                    completedGoalCount,
+                    goals.count
+                )
+            )
         }
     }
 
@@ -185,7 +191,7 @@ public struct GameCenterMainView: View {
             HStack(spacing: 6) {
                 Image(systemName: goalsButtonSystemImage)
                     .imageScale(.medium)
-                Text("목표")
+                Text(GameCenterLocalizedString.string("ui.goals.title"))
                     .font(.subheadline.weight(.semibold))
             }
         } else {
@@ -236,7 +242,10 @@ public struct GameCenterMainView: View {
             Button(role: .destructive) {
                 Task { await resetAchievementsFromDebugMenu() }
             } label: {
-                Label("테스트 계정 업적 초기화", systemImage: "arrow.counterclockwise.circle")
+                Label(
+                    GameCenterLocalizedString.string("ui.debug.achievement_reset"),
+                    systemImage: "arrow.counterclockwise.circle"
+                )
             }
             .disabled(isResettingAchievements)
         } label: {
@@ -244,7 +253,7 @@ public struct GameCenterMainView: View {
                 .imageScale(.large)
         }
         .gameCenterGlassButton()
-        .accessibilityLabel("Game Center 디버그 메뉴")
+        .accessibilityLabel(GameCenterLocalizedString.string("accessibility.debug.menu"))
     }
 
     private var resetAchievementsMessageBinding: Binding<Bool> {
@@ -267,9 +276,14 @@ public struct GameCenterMainView: View {
             try await achievementClient.resetAchievements()
             await achievementProgressCache.invalidate()
             achievementSyncTrigger += 1
-            resetAchievementsMessage = "Achievements reset"
+            resetAchievementsMessage = GameCenterLocalizedString.string(
+                "ui.debug.achievement_reset.success"
+            )
         } catch {
-            resetAchievementsMessage = "Achievement reset failed: \(gameCenterDisplayMessage(for: error))"
+            resetAchievementsMessage = GameCenterLocalizedString.format(
+                "ui.debug.achievement_reset.failure",
+                gameCenterDisplayMessage(for: error)
+            )
         }
     }
     #endif
@@ -279,10 +293,10 @@ private extension View {
     @ViewBuilder
     func gameCenterRankingNavigationTitle() -> some View {
         #if os(iOS) || os(visionOS)
-        navigationTitle("랭킹")
+        navigationTitle(GameCenterLocalizedString.string("ui.leaderboard.title"))
             .navigationBarTitleDisplayMode(.large)
         #else
-        navigationTitle("랭킹")
+        navigationTitle(GameCenterLocalizedString.string("ui.leaderboard.title"))
         #endif
     }
 }
