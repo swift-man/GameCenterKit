@@ -5,10 +5,13 @@ func gameCenterDisplayMessage(for error: Error) -> String {
         return gameCenterError.userFacingMessage
     }
 
-    let localizedDescription = (error as NSError).localizedDescription
-    if localizedDescription.isEmpty {
-        return GameCenterLocalizedString.string("error.request_failed")
+    if
+        let localizedError = error as? LocalizedError,
+        let errorDescription = localizedError.errorDescription,
+        !errorDescription.isEmpty
+    {
+        return errorDescription
     }
 
-    return localizedDescription
+    return GameCenterLocalizedString.string("error.request_failed")
 }

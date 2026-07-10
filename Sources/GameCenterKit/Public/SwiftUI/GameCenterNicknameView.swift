@@ -146,7 +146,7 @@ public struct GameCenterNicknameView: View {
                         .gameCenterNumericTransition()
                         .animation(.default, value: detailText)
                 } else if player != nil {
-                    Text("Game Center")
+                    Text(GameCenterLocalizedString.string("ui.game_center"))
                         .font(.caption)
                         .foregroundStyle(scheme.onSurfaceVariant.color)
                 }

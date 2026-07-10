@@ -6,7 +6,10 @@ enum GameCenterLocalizedString {
         localization: String? = nil,
         bundle: Bundle = .module
     ) -> String {
-        localizedBundle(for: localization, in: bundle)
+        localizedBundle(
+            for: resolvedLocalization(for: localization, in: bundle),
+            in: bundle
+        )
             .localizedString(forKey: key, value: nil, table: "Localizable")
     }
 
@@ -16,11 +19,28 @@ enum GameCenterLocalizedString {
         bundle: Bundle = .module,
         _ arguments: CVarArg...
     ) -> String {
-        String(
-            format: string(key, localization: localization, bundle: bundle),
-            locale: localization.map(Locale.init(identifier:)) ?? .current,
+        let resolvedLocalization = resolvedLocalization(for: localization, in: bundle)
+
+        return String(
+            format: localizedBundle(for: resolvedLocalization, in: bundle)
+                .localizedString(forKey: key, value: nil, table: "Localizable"),
+            locale: resolvedLocalization.map(Locale.init(identifier:)) ?? .current,
             arguments: arguments
         )
+    }
+
+    private static func resolvedLocalization(
+        for localization: String?,
+        in bundle: Bundle
+    ) -> String? {
+        guard let localization else {
+            return nil
+        }
+
+        return Bundle.preferredLocalizations(
+            from: bundle.localizations,
+            forPreferences: [localization]
+        ).first
     }
 
     private static func localizedBundle(

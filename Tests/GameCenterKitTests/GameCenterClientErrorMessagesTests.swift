@@ -46,4 +46,28 @@ final class GameCenterClientErrorMessagesTests: XCTestCase {
             )
         )
     }
+
+    func testDisplayMessageUsesExplicitLocalizedErrorDescription() {
+        XCTAssertEqual(
+            gameCenterDisplayMessage(for: DescribedTestError()),
+            "Custom user-facing message"
+        )
+    }
+
+    func testDisplayMessageFallsBackForUnknownErrors() {
+        XCTAssertTrue(
+            [
+                "Unable to complete the Game Center request.",
+                "Game Center 요청을 완료하지 못했습니다.",
+            ].contains(gameCenterDisplayMessage(for: PlainTestError.failed))
+        )
+    }
+}
+
+private struct DescribedTestError: LocalizedError {
+    var errorDescription: String? { "Custom user-facing message" }
+}
+
+private enum PlainTestError: Error {
+    case failed
 }

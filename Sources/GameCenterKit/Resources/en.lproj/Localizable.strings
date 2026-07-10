@@ -29,6 +29,7 @@
 "ui.goal.action.report" = "Report Completion";
 "ui.goal.status.completed" = "Goal completed";
 "ui.goal.status.in_progress" = "In progress";
+"ui.game_center" = "Game Center";
 "ui.goals.completion_title" = "Goal Completion";
 "ui.goals.title" = "Goals";
 "ui.leaderboard.category" = "Category";

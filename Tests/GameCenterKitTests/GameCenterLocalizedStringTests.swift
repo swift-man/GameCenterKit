@@ -34,6 +34,7 @@ final class GameCenterLocalizedStringTests: XCTestCase {
         "ui.goal.action.report",
         "ui.goal.status.completed",
         "ui.goal.status.in_progress",
+        "ui.game_center",
         "ui.goals.completion_title",
         "ui.goals.title",
         "ui.leaderboard.category",
@@ -101,6 +102,26 @@ final class GameCenterLocalizedStringTests: XCTestCase {
                     localization: "unsupported"
                 )
             )
+        )
+    }
+
+    func testRegionSpecificLocalizationsResolveLanguageResources() {
+        XCTAssertEqual(
+            GameCenterLocalizedString.string("ui.goals.title", localization: "en-US"),
+            "Goals"
+        )
+        XCTAssertEqual(
+            GameCenterLocalizedString.string("ui.goals.title", localization: "ko-KR"),
+            "목표"
+        )
+        XCTAssertEqual(
+            GameCenterLocalizedString.format(
+                "accessibility.goals.value",
+                localization: "ko-KR",
+                2,
+                5
+            ),
+            "목표 5개 중 2개 완료"
         )
     }
 

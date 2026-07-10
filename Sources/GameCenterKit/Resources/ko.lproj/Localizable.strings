@@ -29,6 +29,7 @@
 "ui.goal.action.report" = "달성 보고";
 "ui.goal.status.completed" = "목표 달성";
 "ui.goal.status.in_progress" = "진행 중";
+"ui.game_center" = "Game Center";
 "ui.goals.completion_title" = "목표 달성";
 "ui.goals.title" = "목표";
 "ui.leaderboard.category" = "종류";
