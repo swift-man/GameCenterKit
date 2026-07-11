@@ -2,6 +2,17 @@
 
 All notable changes to GameCenterKit will be documented in this file.
 
+## [0.3.1] - 2026-07-12
+
+### Changed
+
+- Centralized completed-goal counting so the main dashboard and goals popup use the same completion rule.
+
+### Fixed
+
+- Cleared stale reported-achievement state when Game Center progress synchronization fails.
+- Locked unsupported explicit localizations to the package's English fallback with regression coverage.
+
 ## [0.3.0] - 2026-07-11
 
 ### Added
