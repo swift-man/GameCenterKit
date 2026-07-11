@@ -48,17 +48,13 @@ struct GameCenterGoalsPopupView: View {
 
             Spacer()
 
-            Text("\(completedGoalCount)/\(goals.count)")
+            Text("\(goals.gameCenterCompletedGoalCount)/\(goals.count)")
                 .font(.subheadline.monospacedDigit().weight(.semibold))
                 .foregroundStyle(scheme.onSurfaceVariant.color)
                 .gameCenterNumericTransition()
-                .animation(.default, value: completedGoalCount)
+                .animation(.default, value: goals.gameCenterCompletedGoalCount)
         }
         .padding(14)
         .gameCenterGlassCard(cornerRadius: 20)
-    }
-
-    private var completedGoalCount: Int {
-        goals.filter { $0.currentValue >= $0.goal.targetValue }.count
     }
 }
