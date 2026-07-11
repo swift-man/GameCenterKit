@@ -173,12 +173,12 @@ public struct GameCenterMainView: View {
             } label: {
                 goalsButtonLabel
             }
-            .gameCenterGlassButton(isProminent: completedGoalCount == goals.count)
+            .gameCenterGlassButton(isProminent: goals.gameCenterCompletedGoalCount == goals.count)
             .accessibilityLabel(GameCenterLocalizedString.string("accessibility.goals.button"))
             .accessibilityValue(
                 GameCenterLocalizedString.format(
                     "accessibility.goals.value",
-                    completedGoalCount,
+                    goals.gameCenterCompletedGoalCount,
                     goals.count
                 )
             )
@@ -201,11 +201,7 @@ public struct GameCenterMainView: View {
     }
 
     private var goalsButtonSystemImage: String {
-        completedGoalCount == goals.count ? "checkmark.seal.fill" : "target"
-    }
-
-    private var completedGoalCount: Int {
-        goals.filter { $0.currentValue >= $0.goal.targetValue }.count
+        goals.gameCenterCompletedGoalCount == goals.count ? "checkmark.seal.fill" : "target"
     }
 
     private var goalsToolbarPlacement: ToolbarItemPlacement {

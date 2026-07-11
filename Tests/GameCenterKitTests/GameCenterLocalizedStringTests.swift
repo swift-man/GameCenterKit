@@ -95,13 +95,12 @@ final class GameCenterLocalizedStringTests: XCTestCase {
                 GameCenterLocalizedString.string("accessibility.profile")
             )
         )
-        XCTAssertTrue(
-            supportedValues.contains(
-                GameCenterLocalizedString.string(
-                    "accessibility.profile",
-                    localization: "unsupported"
-                )
-            )
+        XCTAssertEqual(
+            GameCenterLocalizedString.string(
+                "accessibility.profile",
+                localization: "unsupported"
+            ),
+            "Game Center profile"
         )
     }
 

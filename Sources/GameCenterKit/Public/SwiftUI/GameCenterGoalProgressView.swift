@@ -304,7 +304,7 @@ public struct GameCenterGoalProgressView: View {
 
             didReportAchievement = progress.isCompleted || progress.percentComplete >= 100
         } catch {
-            return
+            didReportAchievement = false
         }
     }
 }
