@@ -2,6 +2,13 @@
 
 All notable changes to GameCenterKit will be documented in this file.
 
+## [0.3.2] - 2026-07-12
+
+### Changed
+
+- Made achievement progress cache invalidation skip repeated work when no cached or in-flight state remains.
+- Preserved standalone goal view authentication handling while reducing duplicate cache cancellation work across multiple cards.
+
 ## [0.3.1] - 2026-07-12
 
 ### Changed
