@@ -40,6 +40,8 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
     }
 
     func testInvalidatePreventsInFlightLoadFromRepopulatingCache() async throws {
+        let loadStartedExpectation = expectation(description: "Achievement load started")
+        let loadStarted = SendableExpectation(loadStartedExpectation)
         let achievements = [
             GameCenterAchievementProgress(
                 id: "achievement.score-100",
@@ -50,7 +52,10 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         let client = CountingAchievementClient(
             achievements: achievements,
             delayNanoseconds: 50_000_000,
-            ignoresCancellation: true
+            ignoresCancellation: true,
+            onFirstLoadStart: {
+                loadStarted.fulfill()
+            }
         )
         let store = GameCenterAchievementProgressStore(ttl: 30)
 
@@ -58,7 +63,7 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
             try await store.load(using: client)
         }
 
-        await client.waitForLoadCallCount(1)
+        await fulfillment(of: [loadStartedExpectation], timeout: 1)
 
         let inFlightInvalidationChangedState = await store.invalidate()
         let repeatedInvalidationChangedState = await store.invalidate()
@@ -79,18 +84,23 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
     }
 
     func testInvalidateTakesPrecedenceOverInFlightLoadFailure() async throws {
+        let loadStartedExpectation = expectation(description: "Failing achievement load started")
+        let loadStarted = SendableExpectation(loadStartedExpectation)
         let client = CountingAchievementClient(
             achievements: [],
             delayNanoseconds: 50_000_000,
             ignoresCancellation: true,
-            failsAfterDelay: true
+            failsAfterDelay: true,
+            onFirstLoadStart: {
+                loadStarted.fulfill()
+            }
         )
         let store = GameCenterAchievementProgressStore(ttl: 30)
         let inFlightLoad = Task {
             try await store.load(using: client)
         }
 
-        await client.waitForLoadCallCount(1)
+        await fulfillment(of: [loadStartedExpectation], timeout: 1)
 
         await store.invalidate()
 
@@ -121,33 +131,32 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
 }
 
 private actor CountingAchievementClient: GameCenterAchievementClientProtocol {
-    private struct LoadCountWaiter {
-        var expectedCount: Int
-        var continuation: CheckedContinuation<Void, Never>
-    }
-
     private let achievements: [GameCenterAchievementProgress]
     private let delayNanoseconds: UInt64
     private let ignoresCancellation: Bool
     private let failsAfterDelay: Bool
+    private let onFirstLoadStart: @Sendable () -> Void
     private var loadCount = 0
-    private var loadCountWaiters: [LoadCountWaiter] = []
 
     init(
         achievements: [GameCenterAchievementProgress],
         delayNanoseconds: UInt64 = 0,
         ignoresCancellation: Bool = false,
-        failsAfterDelay: Bool = false
+        failsAfterDelay: Bool = false,
+        onFirstLoadStart: @escaping @Sendable () -> Void = {}
     ) {
         self.achievements = achievements
         self.delayNanoseconds = delayNanoseconds
         self.ignoresCancellation = ignoresCancellation
         self.failsAfterDelay = failsAfterDelay
+        self.onFirstLoadStart = onFirstLoadStart
     }
 
     func loadAchievements() async throws -> [GameCenterAchievementProgress] {
         loadCount += 1
-        resumeLoadCountWaiters()
+        if loadCount == 1 {
+            onFirstLoadStart()
+        }
 
         if delayNanoseconds > 0 {
             do {
@@ -170,37 +179,20 @@ private actor CountingAchievementClient: GameCenterAchievementClientProtocol {
     func loadCallCount() -> Int {
         loadCount
     }
-
-    func waitForLoadCallCount(_ expectedCount: Int) async {
-        guard loadCount < expectedCount else {
-            return
-        }
-
-        await withCheckedContinuation { continuation in
-            loadCountWaiters.append(
-                LoadCountWaiter(
-                    expectedCount: expectedCount,
-                    continuation: continuation
-                )
-            )
-        }
-    }
-
-    private func resumeLoadCountWaiters() {
-        var pendingWaiters: [LoadCountWaiter] = []
-
-        for waiter in loadCountWaiters {
-            if loadCount >= waiter.expectedCount {
-                waiter.continuation.resume()
-            } else {
-                pendingWaiters.append(waiter)
-            }
-        }
-
-        loadCountWaiters = pendingWaiters
-    }
 }
 
 private enum AchievementLoadError: Error {
     case failed
+}
+
+private final class SendableExpectation: @unchecked Sendable {
+    private let expectation: XCTestExpectation
+
+    init(_ expectation: XCTestExpectation) {
+        self.expectation = expectation
+    }
+
+    func fulfill() {
+        expectation.fulfill()
+    }
 }
