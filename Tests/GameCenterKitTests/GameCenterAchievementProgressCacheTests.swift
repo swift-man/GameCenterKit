@@ -58,11 +58,13 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
             try await store.load(using: client)
         }
 
-        while await client.loadCallCount() == 0 {
-            try await Task.sleep(nanoseconds: 1_000_000)
-        }
+        await client.waitForLoadCallCount(1)
 
-        await store.invalidate()
+        let inFlightInvalidationChangedState = await store.invalidate()
+        let repeatedInvalidationChangedState = await store.invalidate()
+
+        XCTAssertTrue(inFlightInvalidationChangedState)
+        XCTAssertFalse(repeatedInvalidationChangedState)
 
         do {
             _ = try await inFlightLoad.value
@@ -74,6 +76,31 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
 
         let loadCallCount = await client.loadCallCount()
         XCTAssertEqual(loadCallCount, 2)
+    }
+
+    func testInvalidateTakesPrecedenceOverInFlightLoadFailure() async throws {
+        let client = CountingAchievementClient(
+            achievements: [],
+            delayNanoseconds: 50_000_000,
+            ignoresCancellation: true,
+            failsAfterDelay: true
+        )
+        let store = GameCenterAchievementProgressStore(ttl: 30)
+        let inFlightLoad = Task {
+            try await store.load(using: client)
+        }
+
+        await client.waitForLoadCallCount(1)
+
+        await store.invalidate()
+
+        do {
+            _ = try await inFlightLoad.value
+            XCTFail("Expected invalidation to take precedence over the load failure")
+        } catch is CancellationError {
+        } catch {
+            XCTFail("Expected CancellationError, got \(error)")
+        }
     }
 
     func testInvalidateSkipsRepeatedEmptyInvalidations() async throws {
@@ -94,29 +121,43 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
 }
 
 private actor CountingAchievementClient: GameCenterAchievementClientProtocol {
+    private struct LoadCountWaiter {
+        var expectedCount: Int
+        var continuation: CheckedContinuation<Void, Never>
+    }
+
     private let achievements: [GameCenterAchievementProgress]
     private let delayNanoseconds: UInt64
     private let ignoresCancellation: Bool
+    private let failsAfterDelay: Bool
     private var loadCount = 0
+    private var loadCountWaiters: [LoadCountWaiter] = []
 
     init(
         achievements: [GameCenterAchievementProgress],
         delayNanoseconds: UInt64 = 0,
-        ignoresCancellation: Bool = false
+        ignoresCancellation: Bool = false,
+        failsAfterDelay: Bool = false
     ) {
         self.achievements = achievements
         self.delayNanoseconds = delayNanoseconds
         self.ignoresCancellation = ignoresCancellation
+        self.failsAfterDelay = failsAfterDelay
     }
 
     func loadAchievements() async throws -> [GameCenterAchievementProgress] {
         loadCount += 1
+        resumeLoadCountWaiters()
 
         if delayNanoseconds > 0 {
             do {
                 try await Task.sleep(nanoseconds: delayNanoseconds)
             } catch is CancellationError where ignoresCancellation {
             }
+        }
+
+        if failsAfterDelay {
+            throw AchievementLoadError.failed
         }
 
         return achievements
@@ -129,4 +170,37 @@ private actor CountingAchievementClient: GameCenterAchievementClientProtocol {
     func loadCallCount() -> Int {
         loadCount
     }
+
+    func waitForLoadCallCount(_ expectedCount: Int) async {
+        guard loadCount < expectedCount else {
+            return
+        }
+
+        await withCheckedContinuation { continuation in
+            loadCountWaiters.append(
+                LoadCountWaiter(
+                    expectedCount: expectedCount,
+                    continuation: continuation
+                )
+            )
+        }
+    }
+
+    private func resumeLoadCountWaiters() {
+        var pendingWaiters: [LoadCountWaiter] = []
+
+        for waiter in loadCountWaiters {
+            if loadCount >= waiter.expectedCount {
+                waiter.continuation.resume()
+            } else {
+                pendingWaiters.append(waiter)
+            }
+        }
+
+        loadCountWaiters = pendingWaiters
+    }
+}
+
+private enum AchievementLoadError: Error {
+    case failed
 }

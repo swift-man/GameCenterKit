@@ -103,11 +103,11 @@ actor GameCenterAchievementProgressStore {
     }
 
     private func achievements(from inFlightLoad: InFlightLoad) async throws -> [GameCenterAchievementProgress] {
-        let achievements = try await inFlightLoad.task.value
+        let result = await inFlightLoad.task.result
         guard inFlightLoad.generation == invalidationGeneration else {
             throw CancellationError()
         }
 
-        return achievements
+        return try result.get()
     }
 }
