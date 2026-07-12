@@ -75,6 +75,22 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         let loadCallCount = await client.loadCallCount()
         XCTAssertEqual(loadCallCount, 2)
     }
+
+    func testInvalidateSkipsRepeatedEmptyInvalidations() async throws {
+        let client = CountingAchievementClient(achievements: [])
+        let store = GameCenterAchievementProgressStore(ttl: 30)
+
+        let initialInvalidationChangedState = await store.invalidate()
+        XCTAssertFalse(initialInvalidationChangedState)
+
+        _ = try await store.load(using: client)
+
+        let cachedInvalidationChangedState = await store.invalidate()
+        let repeatedInvalidationChangedState = await store.invalidate()
+
+        XCTAssertTrue(cachedInvalidationChangedState)
+        XCTAssertFalse(repeatedInvalidationChangedState)
+    }
 }
 
 private actor CountingAchievementClient: GameCenterAchievementClientProtocol {

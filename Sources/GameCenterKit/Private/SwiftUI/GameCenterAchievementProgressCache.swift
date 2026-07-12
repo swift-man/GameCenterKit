@@ -13,7 +13,7 @@ extension GameCenterAchievementProgressCache {
                 try await store.load(using: client)
             },
             invalidate: {
-                await store.invalidate()
+                _ = await store.invalidate()
             }
         )
     }()
@@ -89,11 +89,17 @@ actor GameCenterAchievementProgressStore {
         }
     }
 
-    func invalidate() {
+    @discardableResult
+    func invalidate() -> Bool {
+        guard cacheEntry != nil || inFlightLoad != nil else {
+            return false
+        }
+
         invalidationGeneration += 1
         cacheEntry = nil
         inFlightLoad?.task.cancel()
         inFlightLoad = nil
+        return true
     }
 
     private func achievements(from inFlightLoad: InFlightLoad) async throws -> [GameCenterAchievementProgress] {
