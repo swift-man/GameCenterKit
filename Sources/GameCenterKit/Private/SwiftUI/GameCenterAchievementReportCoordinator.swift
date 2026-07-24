@@ -56,13 +56,21 @@ actor GameCenterAchievementReportStore {
         var achievementID: String
     }
 
+    private struct InvalidationContext: Equatable {
+        var globalToken: UUID
+        var playerToken: UUID?
+    }
+
     private struct InFlightReport {
         var id: UUID
+        var invalidationContext: InvalidationContext
         var task: Task<Void, Error>
     }
 
     private var inFlightReports: [ReportKey: InFlightReport] = [:]
     private var completedReportKeys: Set<ReportKey> = []
+    private var globalInvalidationToken = UUID()
+    private var playerInvalidationTokens: [String: UUID] = [:]
 
     func report(
         playerID: String,
@@ -77,10 +85,17 @@ actor GameCenterAchievementReportStore {
 
         if let inFlightReport = inFlightReports[key] {
             try await inFlightReport.task.value
+            guard isCurrent(
+                inFlightReport.invalidationContext,
+                playerID: playerID
+            ) else {
+                throw CancellationError()
+            }
             return .joinedExistingReport
         }
 
         let reportID = UUID()
+        let invalidationContext = invalidationContext(for: playerID)
         let task = Task {
             guard await authenticationClient.isAuthenticated,
                   let localPlayer = try? await authenticationClient.localPlayer(),
@@ -92,10 +107,19 @@ actor GameCenterAchievementReportStore {
             try Task.checkCancellation()
             try await achievementClient.reportAchievement(report)
         }
-        inFlightReports[key] = InFlightReport(id: reportID, task: task)
+        inFlightReports[key] = InFlightReport(
+            id: reportID,
+            invalidationContext: invalidationContext,
+            task: task
+        )
 
         do {
             try await task.value
+            guard isCurrent(invalidationContext, playerID: playerID),
+                  inFlightReports[key]?.id == reportID
+            else {
+                throw CancellationError()
+            }
             completedReportKeys.insert(key)
             removeReport(key: key, id: reportID)
             return .reported
@@ -107,12 +131,15 @@ actor GameCenterAchievementReportStore {
 
     func invalidate(playerID: String?) {
         guard let playerID else {
+            globalInvalidationToken = UUID()
+            playerInvalidationTokens.removeAll()
             inFlightReports.values.forEach { $0.task.cancel() }
             inFlightReports.removeAll()
             completedReportKeys.removeAll()
             return
         }
 
+        playerInvalidationTokens[playerID] = UUID()
         let matchingKeys = inFlightReports.keys.filter { $0.playerID == playerID }
         for key in matchingKeys {
             inFlightReports[key]?.task.cancel()
@@ -121,6 +148,20 @@ actor GameCenterAchievementReportStore {
         completedReportKeys = Set(
             completedReportKeys.filter { $0.playerID != playerID }
         )
+    }
+
+    private func invalidationContext(for playerID: String) -> InvalidationContext {
+        InvalidationContext(
+            globalToken: globalInvalidationToken,
+            playerToken: playerInvalidationTokens[playerID]
+        )
+    }
+
+    private func isCurrent(
+        _ context: InvalidationContext,
+        playerID: String
+    ) -> Bool {
+        context == invalidationContext(for: playerID)
     }
 
     private func removeReport(key: ReportKey, id: UUID) {

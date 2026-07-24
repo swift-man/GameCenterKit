@@ -306,6 +306,55 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         XCTAssertEqual(repeatedReportCallCount, 1)
     }
 
+    func testReportStoreInvalidationRejectsCancellationIgnoringCompletion() async throws {
+        let reportStartedExpectation = expectation(description: "Achievement report started")
+        let reportStarted = SendableExpectation(reportStartedExpectation)
+        let store = GameCenterAchievementReportStore()
+        let client = ControlledReportAchievementClient(
+            onFirstReportStart: {
+                reportStarted.fulfill()
+            }
+        )
+        let authenticationClient = AuthenticatedPlayerClient(playerID: "player-a")
+        let report = GameCenterAchievementReport(
+            achievementID: "achievement.score-100",
+            percentComplete: 100,
+            showsCompletionBanner: true
+        )
+
+        let invalidatedReport = Task {
+            try await store.report(
+                playerID: "player-a",
+                report: report,
+                authenticationClient: authenticationClient,
+                achievementClient: client
+            )
+        }
+        await fulfillment(of: [reportStartedExpectation], timeout: 1)
+
+        await store.invalidate(playerID: "player-a")
+        await client.resumeFirstReport()
+
+        do {
+            _ = try await invalidatedReport.value
+            XCTFail("Expected the invalidated report to be rejected")
+        } catch is CancellationError {
+        }
+
+        let retriedResult = try await store.report(
+            playerID: "player-a",
+            report: report,
+            authenticationClient: authenticationClient,
+            achievementClient: client
+        )
+        if case .reported = retriedResult {
+        } else {
+            XCTFail("Expected a new report after invalidation")
+        }
+        let reportCallCount = await client.reportCallCount()
+        XCTAssertEqual(reportCallCount, 2)
+    }
+
     func testAchievementSyncRejectsCancelledOrStaleResults() async {
         let playerASyncID = AchievementSyncID(
             achievementID: "achievement.score-100",
@@ -490,6 +539,41 @@ private actor CountingReportAchievementClient: GameCenterAchievementClientProtoc
     }
 
     func resetAchievements() async throws {}
+
+    func reportCallCount() -> Int {
+        reportCount
+    }
+}
+
+private actor ControlledReportAchievementClient: GameCenterAchievementClientProtocol {
+    private let onFirstReportStart: @Sendable () -> Void
+    private var firstReportContinuation: CheckedContinuation<Void, Never>?
+    private var reportCount = 0
+
+    init(onFirstReportStart: @escaping @Sendable () -> Void) {
+        self.onFirstReportStart = onFirstReportStart
+    }
+
+    func loadAchievements() async throws -> [GameCenterAchievementProgress] {
+        []
+    }
+
+    func reportAchievement(_ report: GameCenterAchievementReport) async throws {
+        reportCount += 1
+        guard reportCount == 1 else { return }
+
+        onFirstReportStart()
+        await withCheckedContinuation { continuation in
+            firstReportContinuation = continuation
+        }
+    }
+
+    func resetAchievements() async throws {}
+
+    func resumeFirstReport() {
+        firstReportContinuation?.resume()
+        firstReportContinuation = nil
+    }
 
     func reportCallCount() -> Int {
         reportCount
