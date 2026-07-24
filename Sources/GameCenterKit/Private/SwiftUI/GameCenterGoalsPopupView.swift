@@ -5,6 +5,7 @@ struct GameCenterGoalsPopupView: View {
     let goals: [GameCenterGoalProgressInput]
     let syncTrigger: Int
     let isAchievementSoundEnabled: Bool
+    let onAchievementReported: () -> Void
 
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -26,7 +27,8 @@ struct GameCenterGoalsPopupView: View {
                             reportsAchievementOnCompletion: input.reportsAchievementOnCompletion,
                             style: .square,
                             syncTrigger: syncTrigger,
-                            isAchievementSoundEnabled: isAchievementSoundEnabled
+                            isAchievementSoundEnabled: isAchievementSoundEnabled,
+                            onAchievementReported: onAchievementReported
                         )
                     }
                 }

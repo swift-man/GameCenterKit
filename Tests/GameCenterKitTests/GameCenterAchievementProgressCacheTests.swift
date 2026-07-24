@@ -128,6 +128,75 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         XCTAssertTrue(cachedInvalidationChangedState)
         XCTAssertFalse(repeatedInvalidationChangedState)
     }
+
+    func testMarkCompletedImmediatelyUpdatesCachedAchievement() async throws {
+        let client = CountingAchievementClient(
+            achievements: [
+                GameCenterAchievementProgress(
+                    id: "achievement.score-100",
+                    percentComplete: 50,
+                    isCompleted: false
+                ),
+            ]
+        )
+        let store = GameCenterAchievementProgressStore(ttl: 30)
+        _ = try await store.load(using: client)
+
+        await store.markCompleted("achievement.score-100")
+        let achievements = try await store.load(using: client)
+
+        XCTAssertEqual(achievements.first?.percentComplete, 100)
+        XCTAssertEqual(achievements.first?.isCompleted, true)
+        let loadCallCount = await client.loadCallCount()
+        XCTAssertEqual(loadCallCount, 1)
+    }
+
+    func testMarkCompletedAddsMissingAchievementAndInvalidateClearsIt() async throws {
+        let client = CountingAchievementClient(achievements: [])
+        let store = GameCenterAchievementProgressStore(ttl: 30)
+        _ = try await store.load(using: client)
+
+        await store.markCompleted("achievement.score-100")
+        let markedAchievements = try await store.load(using: client)
+        XCTAssertEqual(markedAchievements.map(\.id), ["achievement.score-100"])
+        XCTAssertEqual(markedAchievements.first?.isCompleted, true)
+
+        await store.invalidate()
+        let reloadedAchievements = try await store.load(using: client)
+        XCTAssertTrue(reloadedAchievements.isEmpty)
+    }
+
+    func testMarkCompletedDuringInFlightLoadIsMergedIntoResult() async throws {
+        let loadStartedExpectation = expectation(description: "Achievement load started")
+        let loadStarted = SendableExpectation(loadStartedExpectation)
+        let client = CountingAchievementClient(
+            achievements: [],
+            delayNanoseconds: 50_000_000,
+            onFirstLoadStart: {
+                loadStarted.fulfill()
+            }
+        )
+        let store = GameCenterAchievementProgressStore(ttl: 30)
+        let inFlightLoad = Task {
+            try await store.load(using: client)
+        }
+
+        await fulfillment(of: [loadStartedExpectation], timeout: 1)
+        let coalescedLoad = Task {
+            try await store.load(using: client)
+        }
+        await Task.yield()
+        await store.markCompleted("achievement.score-100")
+        let achievements = try await inFlightLoad.value
+        let coalescedAchievements = try await coalescedLoad.value
+
+        XCTAssertEqual(achievements.map(\.id), ["achievement.score-100"])
+        XCTAssertEqual(achievements.first?.isCompleted, true)
+        XCTAssertEqual(coalescedAchievements.map(\.id), ["achievement.score-100"])
+        XCTAssertEqual(coalescedAchievements.first?.isCompleted, true)
+        let loadCallCount = await client.loadCallCount()
+        XCTAssertEqual(loadCallCount, 1)
+    }
 }
 
 private actor CountingAchievementClient: GameCenterAchievementClientProtocol {

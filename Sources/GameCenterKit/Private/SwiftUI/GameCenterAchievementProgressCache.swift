@@ -2,6 +2,7 @@ import Foundation
 
 struct GameCenterAchievementProgressCache: Sendable {
     var load: @Sendable (any GameCenterAchievementClientProtocol) async throws -> [GameCenterAchievementProgress]
+    var markCompleted: @Sendable (String) async -> Void
     var invalidate: @Sendable () async -> Void
 }
 
@@ -11,6 +12,9 @@ extension GameCenterAchievementProgressCache {
         return Self(
             load: { client in
                 try await store.load(using: client)
+            },
+            markCompleted: { achievementID in
+                await store.markCompleted(achievementID)
             },
             invalidate: {
                 _ = await store.invalidate()
@@ -22,6 +26,7 @@ extension GameCenterAchievementProgressCache {
         load: { client in
             try await client.loadAchievements()
         },
+        markCompleted: { _ in },
         invalidate: {}
     )
 }
@@ -43,6 +48,7 @@ actor GameCenterAchievementProgressStore {
     private var inFlightLoad: InFlightLoad?
     private var nextLoadID = 0
     private var invalidationGeneration = 0
+    private var locallyCompletedAchievementIDs: Set<String> = []
 
     init(ttl: TimeInterval = 3) {
         self.ttl = ttl
@@ -51,11 +57,13 @@ actor GameCenterAchievementProgressStore {
     func load(using client: any GameCenterAchievementClientProtocol) async throws -> [GameCenterAchievementProgress] {
         let now = Date()
         if let cacheEntry, cacheEntry.expiresAt > now {
-            return cacheEntry.achievements
+            return mergingLocallyCompletedAchievements(into: cacheEntry.achievements)
         }
 
         if let inFlightLoad {
-            return try await achievements(from: inFlightLoad)
+            return mergingLocallyCompletedAchievements(
+                into: try await achievements(from: inFlightLoad)
+            )
         }
 
         let generation = invalidationGeneration
@@ -72,7 +80,9 @@ actor GameCenterAchievementProgressStore {
         self.inFlightLoad = inFlightLoad
 
         do {
-            let achievements = try await achievements(from: inFlightLoad)
+            let achievements = mergingLocallyCompletedAchievements(
+                into: try await achievements(from: inFlightLoad)
+            )
             if self.inFlightLoad?.id == loadID {
                 cacheEntry = CacheEntry(
                     achievements: achievements,
@@ -91,15 +101,26 @@ actor GameCenterAchievementProgressStore {
 
     @discardableResult
     func invalidate() -> Bool {
-        guard cacheEntry != nil || inFlightLoad != nil else {
+        guard cacheEntry != nil || inFlightLoad != nil || !locallyCompletedAchievementIDs.isEmpty else {
             return false
         }
 
         invalidationGeneration += 1
         cacheEntry = nil
+        locallyCompletedAchievementIDs.removeAll()
         inFlightLoad?.task.cancel()
         inFlightLoad = nil
         return true
+    }
+
+    func markCompleted(_ achievementID: String) {
+        locallyCompletedAchievementIDs.insert(achievementID)
+        guard var cacheEntry else { return }
+
+        cacheEntry.achievements = mergingLocallyCompletedAchievements(
+            into: cacheEntry.achievements
+        )
+        self.cacheEntry = cacheEntry
     }
 
     private func achievements(from inFlightLoad: InFlightLoad) async throws -> [GameCenterAchievementProgress] {
@@ -109,5 +130,31 @@ actor GameCenterAchievementProgressStore {
         }
 
         return try result.get()
+    }
+
+    private func mergingLocallyCompletedAchievements(
+        into achievements: [GameCenterAchievementProgress]
+    ) -> [GameCenterAchievementProgress] {
+        var mergedAchievements = achievements
+        var existingIDs = Set(achievements.map(\.id))
+
+        for index in mergedAchievements.indices
+        where locallyCompletedAchievementIDs.contains(mergedAchievements[index].id) {
+            mergedAchievements[index].percentComplete = 100
+            mergedAchievements[index].isCompleted = true
+        }
+
+        for achievementID in locallyCompletedAchievementIDs
+        where existingIDs.insert(achievementID).inserted {
+            mergedAchievements.append(
+                GameCenterAchievementProgress(
+                    id: achievementID,
+                    percentComplete: 100,
+                    isCompleted: true
+                )
+            )
+        }
+
+        return mergedAchievements
     }
 }

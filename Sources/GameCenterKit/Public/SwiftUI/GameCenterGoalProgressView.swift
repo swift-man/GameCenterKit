@@ -16,6 +16,7 @@ public struct GameCenterGoalProgressView: View {
     private let theme: MaterialTheme?
     private let syncTrigger: Int
     private let isAchievementSoundEnabled: Bool
+    private let onAchievementReported: () -> Void
 
     @State private var didReportAchievement = false
     @State private var isReportingAchievement = false
@@ -38,7 +39,8 @@ public struct GameCenterGoalProgressView: View {
         reportsAchievementOnCompletion: Bool = true,
         style: GameCenterGoalProgressViewStyle = .fullWidth,
         syncTrigger: Int = 0,
-        isAchievementSoundEnabled: Bool = false
+        isAchievementSoundEnabled: Bool = false,
+        onAchievementReported: @escaping () -> Void = {}
     ) {
         self.goal = goal
         self.currentValue = currentValue
@@ -47,6 +49,7 @@ public struct GameCenterGoalProgressView: View {
         self.theme = theme
         self.syncTrigger = syncTrigger
         self.isAchievementSoundEnabled = isAchievementSoundEnabled
+        self.onAchievementReported = onAchievementReported
     }
 
     public var body: some View {
@@ -268,7 +271,8 @@ public struct GameCenterGoalProgressView: View {
             if isAchievementSoundEnabled {
                 achievementFeedbackClient.playAchievementUnlockedSound()
             }
-            await achievementProgressCache.invalidate()
+            await achievementProgressCache.markCompleted(achievementID)
+            onAchievementReported()
         } catch {
             errorMessage = gameCenterDisplayMessage(for: error)
         }
@@ -295,8 +299,11 @@ public struct GameCenterGoalProgressView: View {
             }
 
             didReportAchievement = progress.isCompleted || progress.percentComplete >= 100
+        } catch is CancellationError {
+            return
         } catch {
-            didReportAchievement = false
+            // A transient refresh failure must not make an already reported goal actionable again.
+            return
         }
     }
 }

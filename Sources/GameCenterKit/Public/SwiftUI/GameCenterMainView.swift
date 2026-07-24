@@ -114,7 +114,8 @@ public struct GameCenterMainView: View {
             GameCenterGoalsPopupView(
                 goals: goals,
                 syncTrigger: achievementSyncTrigger,
-                isAchievementSoundEnabled: isAchievementSoundEnabled
+                isAchievementSoundEnabled: isAchievementSoundEnabled,
+                onAchievementReported: refreshAchievementState
             )
                 .materialTheme(theme)
                 .gameCenterSheetDetents()
@@ -153,7 +154,8 @@ public struct GameCenterMainView: View {
                             reportsAchievementOnCompletion: input.reportsAchievementOnCompletion,
                             style: .square,
                             syncTrigger: achievementSyncTrigger,
-                            isAchievementSoundEnabled: isAchievementSoundEnabled
+                            isAchievementSoundEnabled: isAchievementSoundEnabled,
+                            onAchievementReported: refreshAchievementState
                         )
                         .frame(width: 160)
                     }
@@ -169,6 +171,10 @@ public struct GameCenterMainView: View {
         }
 
         return "#\(entry.rank) · \(entry.formattedScore)"
+    }
+
+    private func refreshAchievementState() {
+        achievementSyncTrigger += 1
     }
 
     @ViewBuilder
