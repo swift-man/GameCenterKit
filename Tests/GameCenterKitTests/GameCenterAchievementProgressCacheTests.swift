@@ -16,8 +16,8 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         )
         let store = GameCenterAchievementProgressStore(ttl: 30)
 
-        async let firstLoad = store.load(using: client)
-        async let secondLoad = store.load(using: client)
+        async let firstLoad = store.load(playerID: "player-a", using: client)
+        async let secondLoad = store.load(playerID: "player-a", using: client)
 
         let firstAchievements = try await firstLoad
         let secondAchievements = try await secondLoad
@@ -27,13 +27,13 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         let concurrentLoadCallCount = await client.loadCallCount()
         XCTAssertEqual(concurrentLoadCallCount, 1)
 
-        _ = try await store.load(using: client)
+        _ = try await store.load(playerID: "player-a", using: client)
 
         let cachedLoadCallCount = await client.loadCallCount()
         XCTAssertEqual(cachedLoadCallCount, 1)
 
-        await store.invalidate()
-        _ = try await store.load(using: client)
+        await store.invalidate(playerID: "player-a")
+        _ = try await store.load(playerID: "player-a", using: client)
 
         let invalidatedLoadCallCount = await client.loadCallCount()
         XCTAssertEqual(invalidatedLoadCallCount, 2)
@@ -60,13 +60,13 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         let store = GameCenterAchievementProgressStore(ttl: 30)
 
         let inFlightLoad = Task {
-            try await store.load(using: client)
+            try await store.load(playerID: "player-a", using: client)
         }
 
         await fulfillment(of: [loadStartedExpectation], timeout: 1)
 
-        let inFlightInvalidationChangedState = await store.invalidate()
-        let repeatedInvalidationChangedState = await store.invalidate()
+        let inFlightInvalidationChangedState = await store.invalidate(playerID: "player-a")
+        let repeatedInvalidationChangedState = await store.invalidate(playerID: "player-a")
 
         XCTAssertTrue(inFlightInvalidationChangedState)
         XCTAssertFalse(repeatedInvalidationChangedState)
@@ -77,7 +77,7 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         } catch is CancellationError {
         }
 
-        _ = try await store.load(using: client)
+        _ = try await store.load(playerID: "player-a", using: client)
 
         let loadCallCount = await client.loadCallCount()
         XCTAssertEqual(loadCallCount, 2)
@@ -97,12 +97,12 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         )
         let store = GameCenterAchievementProgressStore(ttl: 30)
         let inFlightLoad = Task {
-            try await store.load(using: client)
+            try await store.load(playerID: "player-a", using: client)
         }
 
         await fulfillment(of: [loadStartedExpectation], timeout: 1)
 
-        await store.invalidate()
+        await store.invalidate(playerID: "player-a")
 
         do {
             _ = try await inFlightLoad.value
@@ -117,13 +117,13 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         let client = CountingAchievementClient(achievements: [])
         let store = GameCenterAchievementProgressStore(ttl: 30)
 
-        let initialInvalidationChangedState = await store.invalidate()
+        let initialInvalidationChangedState = await store.invalidate(playerID: "player-a")
         XCTAssertFalse(initialInvalidationChangedState)
 
-        _ = try await store.load(using: client)
+        _ = try await store.load(playerID: "player-a", using: client)
 
-        let cachedInvalidationChangedState = await store.invalidate()
-        let repeatedInvalidationChangedState = await store.invalidate()
+        let cachedInvalidationChangedState = await store.invalidate(playerID: "player-a")
+        let repeatedInvalidationChangedState = await store.invalidate(playerID: "player-a")
 
         XCTAssertTrue(cachedInvalidationChangedState)
         XCTAssertFalse(repeatedInvalidationChangedState)
@@ -140,10 +140,10 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
             ]
         )
         let store = GameCenterAchievementProgressStore(ttl: 30)
-        _ = try await store.load(using: client)
+        _ = try await store.load(playerID: "player-a", using: client)
 
-        await store.markCompleted("achievement.score-100")
-        let achievements = try await store.load(using: client)
+        await store.markCompleted("achievement.score-100", playerID: "player-a")
+        let achievements = try await store.load(playerID: "player-a", using: client)
 
         XCTAssertEqual(achievements.first?.percentComplete, 100)
         XCTAssertEqual(achievements.first?.isCompleted, true)
@@ -154,15 +154,15 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
     func testMarkCompletedAddsMissingAchievementAndInvalidateClearsIt() async throws {
         let client = CountingAchievementClient(achievements: [])
         let store = GameCenterAchievementProgressStore(ttl: 30)
-        _ = try await store.load(using: client)
+        _ = try await store.load(playerID: "player-a", using: client)
 
-        await store.markCompleted("achievement.score-100")
-        let markedAchievements = try await store.load(using: client)
+        await store.markCompleted("achievement.score-100", playerID: "player-a")
+        let markedAchievements = try await store.load(playerID: "player-a", using: client)
         XCTAssertEqual(markedAchievements.map(\.id), ["achievement.score-100"])
         XCTAssertEqual(markedAchievements.first?.isCompleted, true)
 
-        await store.invalidate()
-        let reloadedAchievements = try await store.load(using: client)
+        await store.invalidate(playerID: "player-a")
+        let reloadedAchievements = try await store.load(playerID: "player-a", using: client)
         XCTAssertTrue(reloadedAchievements.isEmpty)
     }
 
@@ -178,15 +178,15 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         )
         let store = GameCenterAchievementProgressStore(ttl: 30)
         let inFlightLoad = Task {
-            try await store.load(using: client)
+            try await store.load(playerID: "player-a", using: client)
         }
 
         await fulfillment(of: [loadStartedExpectation], timeout: 1)
         let coalescedLoad = Task {
-            try await store.load(using: client)
+            try await store.load(playerID: "player-a", using: client)
         }
         await Task.yield()
-        await store.markCompleted("achievement.score-100")
+        await store.markCompleted("achievement.score-100", playerID: "player-a")
         let achievements = try await inFlightLoad.value
         let coalescedAchievements = try await coalescedLoad.value
 
@@ -196,6 +196,87 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         XCTAssertEqual(coalescedAchievements.first?.isCompleted, true)
         let loadCallCount = await client.loadCallCount()
         XCTAssertEqual(loadCallCount, 1)
+    }
+
+    func testStoreKeepsCachedAndLocallyCompletedAchievementsSeparateByPlayer() async throws {
+        let playerAClient = CountingAchievementClient(
+            achievements: [
+                GameCenterAchievementProgress(
+                    id: "achievement.player-a",
+                    percentComplete: 100,
+                    isCompleted: true
+                ),
+            ]
+        )
+        let playerBClient = CountingAchievementClient(achievements: [])
+        let store = GameCenterAchievementProgressStore(ttl: 30)
+
+        _ = try await store.load(playerID: "player-a", using: playerAClient)
+        _ = try await store.load(playerID: "player-b", using: playerBClient)
+        await store.markCompleted("achievement.local-a", playerID: "player-a")
+
+        let playerAAchievements = try await store.load(playerID: "player-a", using: playerAClient)
+        let playerBAchievements = try await store.load(playerID: "player-b", using: playerBClient)
+
+        XCTAssertEqual(
+            Set(playerAAchievements.map(\.id)),
+            ["achievement.player-a", "achievement.local-a"]
+        )
+        XCTAssertTrue(playerBAchievements.isEmpty)
+    }
+
+    func testReportStoreCoalescesSameAchievementForSamePlayer() async throws {
+        let store = GameCenterAchievementReportStore()
+        let client = CountingReportAchievementClient(delayNanoseconds: 50_000_000)
+        let authenticationClient = AuthenticatedPlayerClient(playerID: "player-a")
+        let report = GameCenterAchievementReport(
+            achievementID: "achievement.score-100",
+            percentComplete: 100,
+            showsCompletionBanner: true
+        )
+
+        async let firstResult = store.report(
+            playerID: "player-a",
+            report: report,
+            authenticationClient: authenticationClient,
+            achievementClient: client
+        )
+        async let secondResult = store.report(
+            playerID: "player-a",
+            report: report,
+            authenticationClient: authenticationClient,
+            achievementClient: client
+        )
+
+        let results = try await [firstResult, secondResult]
+        let reportedCount = results.reduce(into: 0) { count, result in
+            if case .reported = result {
+                count += 1
+            }
+        }
+        let joinedCount = results.reduce(into: 0) { count, result in
+            if case .joinedExistingReport = result {
+                count += 1
+            }
+        }
+
+        XCTAssertEqual(reportedCount, 1)
+        XCTAssertEqual(joinedCount, 1)
+        let reportCallCount = await client.reportCallCount()
+        XCTAssertEqual(reportCallCount, 1)
+
+        let repeatedResult = try await store.report(
+            playerID: "player-a",
+            report: report,
+            authenticationClient: authenticationClient,
+            achievementClient: client
+        )
+        if case .alreadyReported = repeatedResult {
+        } else {
+            XCTFail("Expected completed reports to stay coalesced")
+        }
+        let repeatedReportCallCount = await client.reportCallCount()
+        XCTAssertEqual(repeatedReportCallCount, 1)
     }
 }
 
@@ -252,6 +333,56 @@ private actor CountingAchievementClient: GameCenterAchievementClientProtocol {
 
 private enum AchievementLoadError: Error {
     case failed
+}
+
+private struct AuthenticatedPlayerClient: GameCenterAuthenticationClientProtocol {
+    let playerID: String
+
+    @MainActor
+    var isAuthenticated: Bool { true }
+
+    #if canImport(UIKit) || canImport(AppKit)
+    @MainActor
+    func authenticate(
+        presenting presenter: GameCenterAuthenticationPresenter?
+    ) async throws -> GameCenterPlayer {
+        try await localPlayer()
+    }
+    #endif
+
+    @MainActor
+    func localPlayer() async throws -> GameCenterPlayer {
+        GameCenterPlayer(
+            gamePlayerID: playerID,
+            teamPlayerID: "\(playerID)-team",
+            displayName: playerID,
+            isAuthenticated: true
+        )
+    }
+}
+
+private actor CountingReportAchievementClient: GameCenterAchievementClientProtocol {
+    private let delayNanoseconds: UInt64
+    private var reportCount = 0
+
+    init(delayNanoseconds: UInt64) {
+        self.delayNanoseconds = delayNanoseconds
+    }
+
+    func loadAchievements() async throws -> [GameCenterAchievementProgress] {
+        []
+    }
+
+    func reportAchievement(_ report: GameCenterAchievementReport) async throws {
+        reportCount += 1
+        try await Task.sleep(nanoseconds: delayNanoseconds)
+    }
+
+    func resetAchievements() async throws {}
+
+    func reportCallCount() -> Int {
+        reportCount
+    }
 }
 
 private final class SendableExpectation: @unchecked Sendable {

@@ -41,9 +41,12 @@ public struct GameCenterMainView: View {
     private let showsPlayerScopePicker: Bool
     private let isAchievementSoundEnabled: Bool
 
+    @Environment(\.scenePhase) private var scenePhase
+
     #if DEBUG
     @Dependency(\.gameCenterAchievementClient) private var achievementClient
     @Dependency(\.gameCenterAchievementProgressCache) private var achievementProgressCache
+    @Dependency(\.gameCenterAchievementReportCoordinator) private var achievementReportCoordinator
     #endif
 
     public init(
@@ -80,6 +83,7 @@ public struct GameCenterMainView: View {
                 if showsProfileChip {
                     GameCenterNicknameView(detailText: localPlayerDetailText) {
                         leaderboardRefreshTrigger += 1
+                        achievementSyncTrigger += 1
                     }
                 }
 
@@ -114,6 +118,7 @@ public struct GameCenterMainView: View {
             GameCenterGoalsPopupView(
                 goals: goals,
                 syncTrigger: achievementSyncTrigger,
+                authenticatedPlayerID: model.player?.gamePlayerID,
                 isAchievementSoundEnabled: isAchievementSoundEnabled,
                 onAchievementReported: refreshAchievementState
             )
@@ -132,6 +137,11 @@ public struct GameCenterMainView: View {
             Text(resetAchievementsMessage ?? "")
         }
         #endif
+        .onChange(of: scenePhase) { phase in
+            guard phase == .active else { return }
+            leaderboardRefreshTrigger += 1
+            achievementSyncTrigger += 1
+        }
     }
 
     private func sectionHeader(_ title: String) -> some View {
@@ -154,6 +164,7 @@ public struct GameCenterMainView: View {
                             reportsAchievementOnCompletion: input.reportsAchievementOnCompletion,
                             style: .square,
                             syncTrigger: achievementSyncTrigger,
+                            authenticatedPlayerID: model.player?.gamePlayerID,
                             isAchievementSoundEnabled: isAchievementSoundEnabled,
                             onAchievementReported: refreshAchievementState
                         )
@@ -284,7 +295,8 @@ public struct GameCenterMainView: View {
 
         do {
             try await achievementClient.resetAchievements()
-            await achievementProgressCache.invalidate()
+            await achievementProgressCache.invalidate(nil)
+            await achievementReportCoordinator.invalidate(nil)
             achievementSyncTrigger += 1
             resetAchievementsMessage = GameCenterLocalizedString.string(
                 "ui.debug.achievement_reset.success"

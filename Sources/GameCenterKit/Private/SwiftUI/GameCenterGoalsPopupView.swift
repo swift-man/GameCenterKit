@@ -4,6 +4,7 @@ import SwiftUI
 struct GameCenterGoalsPopupView: View {
     let goals: [GameCenterGoalProgressInput]
     let syncTrigger: Int
+    let authenticatedPlayerID: String?
     let isAchievementSoundEnabled: Bool
     let onAchievementReported: () -> Void
 
@@ -27,6 +28,7 @@ struct GameCenterGoalsPopupView: View {
                             reportsAchievementOnCompletion: input.reportsAchievementOnCompletion,
                             style: .square,
                             syncTrigger: syncTrigger,
+                            authenticatedPlayerID: authenticatedPlayerID,
                             isAchievementSoundEnabled: isAchievementSoundEnabled,
                             onAchievementReported: onAchievementReported
                         )
