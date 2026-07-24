@@ -294,9 +294,8 @@ public struct GameCenterMainView: View {
         defer { isResettingAchievements = false }
 
         do {
-            try await achievementClient.resetAchievements()
+            try await achievementReportCoordinator.resetAchievements(achievementClient)
             await achievementProgressCache.invalidate(nil)
-            await achievementReportCoordinator.invalidate(nil)
             achievementSyncTrigger += 1
             resetAchievementsMessage = GameCenterLocalizedString.string(
                 "ui.debug.achievement_reset.success"

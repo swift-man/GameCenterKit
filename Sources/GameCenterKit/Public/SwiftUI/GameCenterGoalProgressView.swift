@@ -25,7 +25,7 @@ public struct GameCenterGoalProgressView: View {
     @State private var syncedPlayerID: String?
     @State private var achievementSyncGeneration: UInt = 0
     @State private var achievementSyncRetryState = AchievementSyncRetryState()
-    @State private var errorMessage: String?
+    @State private var achievementReportErrorState = AchievementReportErrorState()
 
     @Environment(\.materialTheme) private var materialTheme
     @Dependency(\.gameCenterAuthenticationClient) private var authenticationClient
@@ -264,7 +264,8 @@ public struct GameCenterGoalProgressView: View {
     }
 
     private var displayedErrorMessage: String? {
-        achievementSyncRetryState.errorMessage ?? errorMessage
+        achievementSyncRetryState.errorMessage
+            ?? achievementReportErrorState.message(for: achievementSyncID)
     }
 
     private var achievementSyncID: AchievementSyncID {
@@ -300,7 +301,7 @@ public struct GameCenterGoalProgressView: View {
         let expectedSyncID = achievementSyncID
         let expectedPlayerID = syncedPlayerID
         isReportingAchievement = true
-        errorMessage = nil
+        achievementReportErrorState.clear()
 
         defer {
             isReportingAchievement = false
@@ -317,9 +318,6 @@ public struct GameCenterGoalProgressView: View {
                 authenticationClient,
                 achievementClient
             )
-            if isAchievementSoundEnabled, case .reported = result {
-                achievementFeedbackClient.playAchievementUnlockedSound()
-            }
             await achievementProgressCache.markCompleted(expectedPlayerID, achievementID)
 
             guard isCurrentReportContext(
@@ -327,6 +325,9 @@ public struct GameCenterGoalProgressView: View {
                 expectedPlayerID: expectedPlayerID
             ) else {
                 return
+            }
+            if isAchievementSoundEnabled, case .reported = result {
+                achievementFeedbackClient.playAchievementUnlockedSound()
             }
             didReportAchievement = true
             onAchievementReported()
@@ -337,7 +338,10 @@ public struct GameCenterGoalProgressView: View {
             ) else {
                 return
             }
-            errorMessage = gameCenterDisplayMessage(for: error)
+            achievementReportErrorState.fail(
+                with: gameCenterDisplayMessage(for: error),
+                syncID: expectedSyncID
+            )
             await syncReportedAchievementState()
         }
     }
@@ -411,6 +415,9 @@ public struct GameCenterGoalProgressView: View {
             }
 
             didReportAchievement = progress.isCompleted || progress.percentComplete >= 100
+            if didReportAchievement {
+                achievementReportErrorState.clear(ifMatching: expectedSyncID)
+            }
             isAchievementStateSynced = true
         } catch is CancellationError {
             return
@@ -481,6 +488,31 @@ struct AchievementSyncRetryState: Equatable {
     mutating func retry() {
         errorMessage = nil
         retryTrigger &+= 1
+    }
+}
+
+struct AchievementReportErrorState: Equatable {
+    private(set) var message: String?
+    private(set) var syncID: AchievementSyncID?
+
+    func message(for currentSyncID: AchievementSyncID) -> String? {
+        guard syncID == currentSyncID else { return nil }
+        return message
+    }
+
+    mutating func fail(with message: String, syncID: AchievementSyncID) {
+        self.message = message
+        self.syncID = syncID
+    }
+
+    mutating func clear(ifMatching expectedSyncID: AchievementSyncID) {
+        guard syncID == expectedSyncID else { return }
+        clear()
+    }
+
+    mutating func clear() {
+        message = nil
+        syncID = nil
     }
 }
 

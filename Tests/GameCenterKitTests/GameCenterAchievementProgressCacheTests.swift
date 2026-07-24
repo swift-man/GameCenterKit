@@ -355,6 +355,65 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         XCTAssertEqual(reportCallCount, 2)
     }
 
+    func testReportStoreResetWaitsForCancellationIgnoringReport() async throws {
+        let reportStartedExpectation = expectation(description: "Achievement report started")
+        let reportStarted = SendableExpectation(reportStartedExpectation)
+        let store = GameCenterAchievementReportStore()
+        let client = ControlledReportAchievementClient(
+            onFirstReportStart: {
+                reportStarted.fulfill()
+            }
+        )
+        let authenticationClient = AuthenticatedPlayerClient(playerID: "player-a")
+        let report = GameCenterAchievementReport(
+            achievementID: "achievement.score-100",
+            percentComplete: 100,
+            showsCompletionBanner: true
+        )
+
+        let inFlightReport = Task {
+            try await store.report(
+                playerID: "player-a",
+                report: report,
+                authenticationClient: authenticationClient,
+                achievementClient: client
+            )
+        }
+        await fulfillment(of: [reportStartedExpectation], timeout: 1)
+
+        let resetTask = Task {
+            try await store.resetAchievements(using: client)
+        }
+        try await Task.sleep(nanoseconds: 20_000_000)
+        let resetCountBeforeReportCompletion = await client.resetCallCount()
+        XCTAssertEqual(resetCountBeforeReportCompletion, 0)
+
+        await client.resumeFirstReport()
+        try await resetTask.value
+
+        do {
+            _ = try await inFlightReport.value
+            XCTFail("Expected the report invalidated by reset to be rejected")
+        } catch is CancellationError {
+        }
+
+        let operationEvents = await client.operationEvents()
+        XCTAssertEqual(operationEvents, [.reportStarted, .reportCompleted, .reset])
+
+        let retriedResult = try await store.report(
+            playerID: "player-a",
+            report: report,
+            authenticationClient: authenticationClient,
+            achievementClient: client
+        )
+        if case .reported = retriedResult {
+        } else {
+            XCTFail("Expected a new report after achievement reset")
+        }
+        let reportCallCount = await client.reportCallCount()
+        XCTAssertEqual(reportCallCount, 2)
+    }
+
     func testAchievementSyncRejectsCancelledOrStaleResults() async {
         let playerASyncID = AchievementSyncID(
             achievementID: "achievement.score-100",
@@ -433,6 +492,33 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         )
         XCTAssertFalse(retryState.canRetry)
         XCTAssertNotEqual(retriedSyncID, failedSyncID)
+    }
+
+    func testAchievementReportErrorIsScopedAndClearedBySuccessfulSync() {
+        let playerASyncID = AchievementSyncID(
+            achievementID: "achievement.score-100",
+            isAuthenticated: true,
+            authenticatedPlayerID: "player-a",
+            syncTrigger: 0
+        )
+        let playerBSyncID = AchievementSyncID(
+            achievementID: "achievement.score-100",
+            isAuthenticated: true,
+            authenticatedPlayerID: "player-b",
+            syncTrigger: 0
+        )
+        var errorState = AchievementReportErrorState()
+
+        errorState.fail(with: "Temporary failure", syncID: playerASyncID)
+
+        XCTAssertEqual(errorState.message(for: playerASyncID), "Temporary failure")
+        XCTAssertNil(errorState.message(for: playerBSyncID))
+
+        errorState.clear(ifMatching: playerBSyncID)
+        XCTAssertEqual(errorState.message(for: playerASyncID), "Temporary failure")
+
+        errorState.clear(ifMatching: playerASyncID)
+        XCTAssertNil(errorState.message(for: playerASyncID))
     }
 }
 
@@ -546,9 +632,17 @@ private actor CountingReportAchievementClient: GameCenterAchievementClientProtoc
 }
 
 private actor ControlledReportAchievementClient: GameCenterAchievementClientProtocol {
+    enum OperationEvent: Equatable {
+        case reportStarted
+        case reportCompleted
+        case reset
+    }
+
     private let onFirstReportStart: @Sendable () -> Void
     private var firstReportContinuation: CheckedContinuation<Void, Never>?
     private var reportCount = 0
+    private var resetCount = 0
+    private var events: [OperationEvent] = []
 
     init(onFirstReportStart: @escaping @Sendable () -> Void) {
         self.onFirstReportStart = onFirstReportStart
@@ -562,13 +656,18 @@ private actor ControlledReportAchievementClient: GameCenterAchievementClientProt
         reportCount += 1
         guard reportCount == 1 else { return }
 
+        events.append(.reportStarted)
         onFirstReportStart()
         await withCheckedContinuation { continuation in
             firstReportContinuation = continuation
         }
+        events.append(.reportCompleted)
     }
 
-    func resetAchievements() async throws {}
+    func resetAchievements() async throws {
+        resetCount += 1
+        events.append(.reset)
+    }
 
     func resumeFirstReport() {
         firstReportContinuation?.resume()
@@ -577,6 +676,14 @@ private actor ControlledReportAchievementClient: GameCenterAchievementClientProt
 
     func reportCallCount() -> Int {
         reportCount
+    }
+
+    func resetCallCount() -> Int {
+        resetCount
+    }
+
+    func operationEvents() -> [OperationEvent] {
+        events
     }
 }
 

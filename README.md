@@ -139,11 +139,11 @@ Each feedback request uses an independent audio player. When several achievement
 complete together, their popup sounds can overlap instead of interrupting the
 sound that started first.
 
-On iOS and visionOS, GameCenterKit changes only the untouched default
-`soloAmbient` audio session to `ambient`, which mixes with other apps. If the host
-already configured an audio category, the package preserves that global policy.
+GameCenterKit never changes the shared audio session category or options. The host
+app retains full control over mixing, interruption, recording, and background-audio
+policy.
 
 Report simultaneous achievements one at a time with `showsCompletionBanner`
 enabled. GameKit queues its system achievement views and presents them one by one,
-while the independent feedback players allow the package sound to mix with system
-or host-app sounds.
+while the independent feedback players allow package sounds to overlap. Whether
+they mix with system or host-app sounds follows the host app's audio-session policy.

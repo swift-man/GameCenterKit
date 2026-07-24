@@ -21,6 +21,7 @@ struct GameCenterAchievementReportCoordinator: Sendable {
         any GameCenterAchievementClientProtocol
     ) async throws -> GameCenterAchievementReportResult
     var invalidate: @Sendable (String?) async -> Void
+    var resetAchievements: @Sendable (any GameCenterAchievementClientProtocol) async throws -> Void
 }
 
 extension GameCenterAchievementReportCoordinator {
@@ -37,6 +38,9 @@ extension GameCenterAchievementReportCoordinator {
             },
             invalidate: { playerID in
                 await store.invalidate(playerID: playerID)
+            },
+            resetAchievements: { achievementClient in
+                try await store.resetAchievements(using: achievementClient)
             }
         )
     }()
@@ -46,7 +50,10 @@ extension GameCenterAchievementReportCoordinator {
             try await achievementClient.reportAchievement(report)
             return .reported
         },
-        invalidate: { _ in }
+        invalidate: { _ in },
+        resetAchievements: { achievementClient in
+            try await achievementClient.resetAchievements()
+        }
     )
 }
 
@@ -71,6 +78,7 @@ actor GameCenterAchievementReportStore {
     private var completedReportKeys: Set<ReportKey> = []
     private var globalInvalidationToken = UUID()
     private var playerInvalidationTokens: [String: UUID] = [:]
+    private var isResettingAchievements = false
 
     func report(
         playerID: String,
@@ -78,6 +86,10 @@ actor GameCenterAchievementReportStore {
         authenticationClient: any GameCenterAuthenticationClientProtocol,
         achievementClient: any GameCenterAchievementClientProtocol
     ) async throws -> GameCenterAchievementReportResult {
+        guard !isResettingAchievements else {
+            throw CancellationError()
+        }
+
         let key = ReportKey(playerID: playerID, achievementID: report.achievementID)
         guard !completedReportKeys.contains(key) else {
             return .alreadyReported
@@ -148,6 +160,33 @@ actor GameCenterAchievementReportStore {
         completedReportKeys = Set(
             completedReportKeys.filter { $0.playerID != playerID }
         )
+    }
+
+    func resetAchievements(
+        using achievementClient: any GameCenterAchievementClientProtocol
+    ) async throws {
+        guard !isResettingAchievements else {
+            throw CancellationError()
+        }
+
+        isResettingAchievements = true
+        globalInvalidationToken = UUID()
+        playerInvalidationTokens.removeAll()
+
+        let reportsToFinish = inFlightReports.values.map(\.task)
+        reportsToFinish.forEach { $0.cancel() }
+        inFlightReports.removeAll()
+
+        defer {
+            isResettingAchievements = false
+        }
+
+        for report in reportsToFinish {
+            _ = await report.result
+        }
+
+        try await achievementClient.resetAchievements()
+        completedReportKeys.removeAll()
     }
 
     private func invalidationContext(for playerID: String) -> InvalidationContext {
