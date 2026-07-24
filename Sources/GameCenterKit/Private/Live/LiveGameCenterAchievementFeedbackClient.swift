@@ -22,9 +22,7 @@ struct NoopGameCenterAchievementFeedbackClient: GameCenterAchievementFeedbackCli
 }
 
 enum GameCenterAchievementSoundResource {
-    static var url: URL? {
-        Bundle.module.url(forResource: "achievement-unlocked", withExtension: "mp3")
-    }
+    static let url = Bundle.module.url(forResource: "achievement-unlocked", withExtension: "mp3")
 }
 
 @MainActor
