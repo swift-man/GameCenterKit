@@ -49,23 +49,6 @@ public struct GameCenterGoalProgressView: View {
         self.isAchievementSoundEnabled = isAchievementSoundEnabled
     }
 
-    init(
-        goal: GameCenterGoal,
-        currentValue: Int,
-        reportsAchievementOnCompletion: Bool = true,
-        style: GameCenterGoalProgressViewStyle = .fullWidth,
-        syncTrigger: Int = 0,
-        isAchievementSoundEnabled: Bool = false
-    ) {
-        self.goal = goal
-        self.currentValue = currentValue
-        self.reportsAchievementOnCompletion = reportsAchievementOnCompletion
-        self.style = style
-        self.theme = nil
-        self.syncTrigger = syncTrigger
-        self.isAchievementSoundEnabled = isAchievementSoundEnabled
-    }
-
     public var body: some View {
         content
             .task(id: achievementSyncID) {
