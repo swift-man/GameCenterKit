@@ -278,6 +278,60 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         let repeatedReportCallCount = await client.reportCallCount()
         XCTAssertEqual(repeatedReportCallCount, 1)
     }
+
+    func testAchievementSyncRejectsCancelledOrStaleResults() async {
+        let playerASyncID = AchievementSyncID(
+            achievementID: "achievement.score-100",
+            isAuthenticated: true,
+            authenticatedPlayerID: "player-a",
+            syncTrigger: 0
+        )
+        let playerBSyncID = AchievementSyncID(
+            achievementID: "achievement.score-100",
+            isAuthenticated: true,
+            authenticatedPlayerID: "player-b",
+            syncTrigger: 0
+        )
+
+        XCTAssertFalse(
+            canApplyAchievementSyncResult(
+                expectedSyncID: playerASyncID,
+                currentSyncID: playerBSyncID,
+                expectedGeneration: 1,
+                currentGeneration: 2
+            )
+        )
+        XCTAssertFalse(
+            canApplyAchievementSyncResult(
+                expectedSyncID: playerBSyncID,
+                currentSyncID: playerBSyncID,
+                expectedGeneration: 1,
+                currentGeneration: 2
+            )
+        )
+
+        let cancelledResult = await Task {
+            withUnsafeCurrentTask { task in
+                task?.cancel()
+            }
+            return canApplyAchievementSyncResult(
+                expectedSyncID: playerBSyncID,
+                currentSyncID: playerBSyncID,
+                expectedGeneration: 2,
+                currentGeneration: 2
+            )
+        }.value
+        XCTAssertFalse(cancelledResult)
+
+        XCTAssertTrue(
+            canApplyAchievementSyncResult(
+                expectedSyncID: playerBSyncID,
+                currentSyncID: playerBSyncID,
+                expectedGeneration: 2,
+                currentGeneration: 2
+            )
+        )
+    }
 }
 
 private actor CountingAchievementClient: GameCenterAchievementClientProtocol {

@@ -23,6 +23,7 @@ public struct GameCenterGoalProgressView: View {
     @State private var isReportingAchievement = false
     @State private var isAchievementStateSynced = false
     @State private var syncedPlayerID: String?
+    @State private var achievementSyncGeneration: UInt = 0
     @State private var errorMessage: String?
 
     @Environment(\.materialTheme) private var materialTheme
@@ -264,6 +265,8 @@ public struct GameCenterGoalProgressView: View {
             return
         }
 
+        let expectedSyncID = achievementSyncID
+        let expectedPlayerID = syncedPlayerID
         isReportingAchievement = true
         errorMessage = nil
 
@@ -282,13 +285,26 @@ public struct GameCenterGoalProgressView: View {
                 authenticationClient,
                 achievementClient
             )
-            didReportAchievement = true
             if isAchievementSoundEnabled, case .reported = result {
                 achievementFeedbackClient.playAchievementUnlockedSound()
             }
-            await achievementProgressCache.markCompleted(syncedPlayerID, achievementID)
+            await achievementProgressCache.markCompleted(expectedPlayerID, achievementID)
+
+            guard isCurrentReportContext(
+                expectedSyncID: expectedSyncID,
+                expectedPlayerID: expectedPlayerID
+            ) else {
+                return
+            }
+            didReportAchievement = true
             onAchievementReported()
         } catch {
+            guard isCurrentReportContext(
+                expectedSyncID: expectedSyncID,
+                expectedPlayerID: expectedPlayerID
+            ) else {
+                return
+            }
             errorMessage = gameCenterDisplayMessage(for: error)
             await syncReportedAchievementState()
         }
@@ -296,6 +312,11 @@ public struct GameCenterGoalProgressView: View {
 
     @MainActor
     private func syncReportedAchievementState() async {
+        guard !Task.isCancelled else { return }
+
+        achievementSyncGeneration &+= 1
+        let expectedGeneration = achievementSyncGeneration
+        let expectedSyncID = achievementSyncID
         isAchievementStateSynced = false
 
         guard let achievementID = goal.achievementID else {
@@ -314,6 +335,12 @@ public struct GameCenterGoalProgressView: View {
 
         do {
             let localPlayer = try await authenticationClient.localPlayer()
+            guard isCurrentSync(
+                expectedSyncID: expectedSyncID,
+                expectedGeneration: expectedGeneration
+            ) else {
+                return
+            }
             guard localPlayer.isAuthenticated,
                   authenticatedPlayerID == nil || localPlayer.gamePlayerID == authenticatedPlayerID
             else {
@@ -324,7 +351,19 @@ public struct GameCenterGoalProgressView: View {
 
             let playerID = localPlayer.gamePlayerID
             let achievements = try await achievementProgressCache.load(playerID, achievementClient)
+            guard isCurrentSync(
+                expectedSyncID: expectedSyncID,
+                expectedGeneration: expectedGeneration
+            ) else {
+                return
+            }
             let refreshedPlayer = try await authenticationClient.localPlayer()
+            guard isCurrentSync(
+                expectedSyncID: expectedSyncID,
+                expectedGeneration: expectedGeneration
+            ) else {
+                return
+            }
             guard refreshedPlayer.isAuthenticated, refreshedPlayer.gamePlayerID == playerID else {
                 didReportAchievement = false
                 syncedPlayerID = nil
@@ -347,11 +386,45 @@ public struct GameCenterGoalProgressView: View {
             return
         }
     }
+
+    @MainActor
+    private func isCurrentSync(
+        expectedSyncID: AchievementSyncID,
+        expectedGeneration: UInt
+    ) -> Bool {
+        canApplyAchievementSyncResult(
+            expectedSyncID: expectedSyncID,
+            currentSyncID: achievementSyncID,
+            expectedGeneration: expectedGeneration,
+            currentGeneration: achievementSyncGeneration
+        )
+    }
+
+    @MainActor
+    private func isCurrentReportContext(
+        expectedSyncID: AchievementSyncID,
+        expectedPlayerID: String
+    ) -> Bool {
+        !Task.isCancelled
+            && achievementSyncID == expectedSyncID
+            && syncedPlayerID == expectedPlayerID
+    }
 }
 
-private struct AchievementSyncID: Equatable {
+struct AchievementSyncID: Equatable {
     var achievementID: String?
     var isAuthenticated: Bool
     var authenticatedPlayerID: String?
     var syncTrigger: Int
+}
+
+func canApplyAchievementSyncResult(
+    expectedSyncID: AchievementSyncID,
+    currentSyncID: AchievementSyncID,
+    expectedGeneration: UInt,
+    currentGeneration: UInt
+) -> Bool {
+    !Task.isCancelled
+        && expectedSyncID == currentSyncID
+        && expectedGeneration == currentGeneration
 }
