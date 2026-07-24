@@ -56,7 +56,7 @@ public struct GameCenterMainView: View {
         range: Range<Int> = 1..<51,
         showsProfileChip: Bool = true,
         showsPlayerScopePicker: Bool = true,
-        isAchievementSoundEnabled: Bool = true
+        isAchievementSoundEnabled: Bool = false
     ) {
         self.theme = theme
         self.goals = goals
@@ -113,6 +113,7 @@ public struct GameCenterMainView: View {
         .popover(isPresented: $isGoalsPopupPresented) {
             GameCenterGoalsPopupView(
                 goals: goals,
+                syncTrigger: achievementSyncTrigger,
                 isAchievementSoundEnabled: isAchievementSoundEnabled
             )
                 .materialTheme(theme)

@@ -117,6 +117,9 @@ GameCenterMainView(
 )
 ```
 
+The default is `false` so package updates never enable audio without an explicit
+host-app decision.
+
 For achievements reported by an app-owned service, use the same injectable
 feedback client after a successful report:
 
@@ -135,6 +138,10 @@ own storage, default value, and settings interface.
 Each feedback request uses an independent audio player. When several achievements
 complete together, their popup sounds can overlap instead of interrupting the
 sound that started first.
+
+On iOS and visionOS, GameCenterKit changes only the untouched default
+`soloAmbient` audio session to `ambient`, which mixes with other apps. If the host
+already configured an audio category, the package preserves that global policy.
 
 Report simultaneous achievements one at a time with `showsCompletionBanner`
 enabled. GameKit queues its system achievement views and presents them one by one,

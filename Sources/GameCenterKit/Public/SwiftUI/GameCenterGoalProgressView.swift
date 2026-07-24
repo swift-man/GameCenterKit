@@ -34,11 +34,11 @@ public struct GameCenterGoalProgressView: View {
     public init(
         goal: GameCenterGoal,
         currentValue: Int,
-        theme: MaterialTheme,
+        theme: MaterialTheme? = nil,
         reportsAchievementOnCompletion: Bool = true,
         style: GameCenterGoalProgressViewStyle = .fullWidth,
         syncTrigger: Int = 0,
-        isAchievementSoundEnabled: Bool = true
+        isAchievementSoundEnabled: Bool = false
     ) {
         self.goal = goal
         self.currentValue = currentValue
@@ -55,7 +55,7 @@ public struct GameCenterGoalProgressView: View {
         reportsAchievementOnCompletion: Bool = true,
         style: GameCenterGoalProgressViewStyle = .fullWidth,
         syncTrigger: Int = 0,
-        isAchievementSoundEnabled: Bool = true
+        isAchievementSoundEnabled: Bool = false
     ) {
         self.goal = goal
         self.currentValue = currentValue

@@ -5,6 +5,7 @@
 //  Created by gorani. on 2026/07/24.
 //
 
+import AVFoundation
 import Dependencies
 import XCTest
 @testable import GameCenterKit
@@ -12,6 +13,13 @@ import XCTest
 final class GameCenterAchievementFeedbackClientTests: XCTestCase {
     func testAchievementUnlockedSoundIsBundled() {
         XCTAssertNotNil(GameCenterAchievementSoundResource.url)
+    }
+
+    func testAchievementUnlockedSoundCanBeDecoded() throws {
+        let soundURL = try XCTUnwrap(GameCenterAchievementSoundResource.url)
+        let player = try AVAudioPlayer(contentsOf: soundURL)
+
+        XCTAssertGreaterThan(player.duration, 0)
     }
 
     @MainActor
