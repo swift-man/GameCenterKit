@@ -101,3 +101,49 @@ GameCenterConfiguration(
     ]
 )
 ```
+
+## Achievement Sound
+
+GameCenterKit bundles a shared achievement sound and plays it after a goal report
+succeeds. The host app owns the user's sound preference and passes the current
+value to the dashboard:
+
+```swift
+GameCenterMainView(
+    configuration: configuration,
+    theme: theme,
+    goals: goals,
+    isAchievementSoundEnabled: settings.isAchievementSoundEnabled
+)
+```
+
+The default is `false` so package updates never enable audio without an explicit
+host-app decision.
+
+For achievements reported by an app-owned service, use the same injectable
+feedback client after a successful report:
+
+```swift
+@Dependency(\.gameCenterAchievementFeedbackClient)
+var achievementFeedbackClient
+
+if settings.isAchievementSoundEnabled {
+    achievementFeedbackClient.playAchievementUnlockedSound()
+}
+```
+
+The package deliberately does not persist the setting so each app can choose its
+own storage, default value, and settings interface.
+
+Each feedback request uses an independent audio player. When several achievements
+complete together, their popup sounds can overlap instead of interrupting the
+sound that started first.
+
+GameCenterKit never changes the shared audio session category or options. The host
+app retains full control over mixing, interruption, recording, and background-audio
+policy.
+
+Report simultaneous achievements one at a time with `showsCompletionBanner`
+enabled. GameKit queues its system achievement views and presents them one by one,
+while the independent feedback players allow package sounds to overlap. Whether
+they mix with system or host-app sounds follows the host app's audio-session policy.

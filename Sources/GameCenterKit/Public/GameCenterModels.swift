@@ -172,6 +172,7 @@ public struct GameCenterGoal: Identifiable, Equatable, Sendable {
 public struct GameCenterAchievementReport: Equatable, Sendable {
     public var achievementID: String
     public var percentComplete: Double
+    /// GameKit 시스템 달성 알림을 요청한다. 여러 목표를 개별 보고하면 시스템이 알림을 순서대로 표시한다.
     public var showsCompletionBanner: Bool
 
     public init(

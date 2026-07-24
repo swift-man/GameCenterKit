@@ -26,6 +26,11 @@ extension DependencyValues {
         set { self[GameCenterAchievementClientDependencyKey.self] = newValue }
     }
 
+    public var gameCenterAchievementFeedbackClient: any GameCenterAchievementFeedbackClientProtocol {
+        get { self[GameCenterAchievementFeedbackClientDependencyKey.self] }
+        set { self[GameCenterAchievementFeedbackClientDependencyKey.self] = newValue }
+    }
+
     public var gameCenterAccessPointClient: any GameCenterAccessPointClientProtocol {
         get { self[GameCenterAccessPointClientDependencyKey.self] }
         set { self[GameCenterAccessPointClientDependencyKey.self] = newValue }

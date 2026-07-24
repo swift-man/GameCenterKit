@@ -39,10 +39,14 @@ public struct GameCenterMainView: View {
     private let goals: [GameCenterGoalProgressInput]
     private let showsProfileChip: Bool
     private let showsPlayerScopePicker: Bool
+    private let isAchievementSoundEnabled: Bool
+
+    @Environment(\.scenePhase) private var scenePhase
 
     #if DEBUG
     @Dependency(\.gameCenterAchievementClient) private var achievementClient
     @Dependency(\.gameCenterAchievementProgressCache) private var achievementProgressCache
+    @Dependency(\.gameCenterAchievementReportCoordinator) private var achievementReportCoordinator
     #endif
 
     public init(
@@ -54,12 +58,14 @@ public struct GameCenterMainView: View {
         playerScope: GameCenterPlayerScope = .global,
         range: Range<Int> = 1..<51,
         showsProfileChip: Bool = true,
-        showsPlayerScopePicker: Bool = true
+        showsPlayerScopePicker: Bool = true,
+        isAchievementSoundEnabled: Bool = false
     ) {
         self.theme = theme
         self.goals = goals
         self.showsProfileChip = showsProfileChip
         self.showsPlayerScopePicker = showsPlayerScopePicker
+        self.isAchievementSoundEnabled = isAchievementSoundEnabled
         _model = StateObject(
             wrappedValue: GameCenterDashboardViewModel(
                 configuration: configuration,
@@ -77,6 +83,7 @@ public struct GameCenterMainView: View {
                 if showsProfileChip {
                     GameCenterNicknameView(detailText: localPlayerDetailText) {
                         leaderboardRefreshTrigger += 1
+                        achievementSyncTrigger += 1
                     }
                 }
 
@@ -108,7 +115,13 @@ public struct GameCenterMainView: View {
             #endif
         }
         .popover(isPresented: $isGoalsPopupPresented) {
-            GameCenterGoalsPopupView(goals: goals)
+            GameCenterGoalsPopupView(
+                goals: goals,
+                syncTrigger: achievementSyncTrigger,
+                authenticatedPlayerID: model.player?.gamePlayerID,
+                isAchievementSoundEnabled: isAchievementSoundEnabled,
+                onAchievementReported: refreshAchievementState
+            )
                 .materialTheme(theme)
                 .gameCenterSheetDetents()
         }
@@ -124,6 +137,11 @@ public struct GameCenterMainView: View {
             Text(resetAchievementsMessage ?? "")
         }
         #endif
+        .onChange(of: scenePhase) { phase in
+            guard phase == .active else { return }
+            leaderboardRefreshTrigger += 1
+            achievementSyncTrigger += 1
+        }
     }
 
     private func sectionHeader(_ title: String) -> some View {
@@ -145,7 +163,10 @@ public struct GameCenterMainView: View {
                             currentValue: input.currentValue,
                             reportsAchievementOnCompletion: input.reportsAchievementOnCompletion,
                             style: .square,
-                            syncTrigger: achievementSyncTrigger
+                            syncTrigger: achievementSyncTrigger,
+                            authenticatedPlayerID: model.player?.gamePlayerID,
+                            isAchievementSoundEnabled: isAchievementSoundEnabled,
+                            onAchievementReported: refreshAchievementState
                         )
                         .frame(width: 160)
                     }
@@ -161,6 +182,10 @@ public struct GameCenterMainView: View {
         }
 
         return "#\(entry.rank) · \(entry.formattedScore)"
+    }
+
+    private func refreshAchievementState() {
+        achievementSyncTrigger += 1
     }
 
     @ViewBuilder
@@ -269,8 +294,8 @@ public struct GameCenterMainView: View {
         defer { isResettingAchievements = false }
 
         do {
-            try await achievementClient.resetAchievements()
-            await achievementProgressCache.invalidate()
+            try await achievementReportCoordinator.resetAchievements(achievementClient)
+            await achievementProgressCache.invalidate(nil)
             achievementSyncTrigger += 1
             resetAchievementsMessage = GameCenterLocalizedString.string(
                 "ui.debug.achievement_reset.success"

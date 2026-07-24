@@ -1,28 +1,33 @@
 import Foundation
 
 struct GameCenterAchievementProgressCache: Sendable {
-    var load: @Sendable (any GameCenterAchievementClientProtocol) async throws -> [GameCenterAchievementProgress]
-    var invalidate: @Sendable () async -> Void
+    var load: @Sendable (String, any GameCenterAchievementClientProtocol) async throws -> [GameCenterAchievementProgress]
+    var markCompleted: @Sendable (String, String) async -> Void
+    var invalidate: @Sendable (String?) async -> Void
 }
 
 extension GameCenterAchievementProgressCache {
     static let live: Self = {
         let store = GameCenterAchievementProgressStore()
         return Self(
-            load: { client in
-                try await store.load(using: client)
+            load: { playerID, client in
+                try await store.load(playerID: playerID, using: client)
             },
-            invalidate: {
-                _ = await store.invalidate()
+            markCompleted: { playerID, achievementID in
+                await store.markCompleted(achievementID, playerID: playerID)
+            },
+            invalidate: { playerID in
+                _ = await store.invalidate(playerID: playerID)
             }
         )
     }()
 
     static let passthrough = Self(
-        load: { client in
+        load: { _, client in
             try await client.loadAchievements()
         },
-        invalidate: {}
+        markCompleted: { _, _ in },
+        invalidate: { _ in }
     )
 }
 
@@ -39,26 +44,36 @@ actor GameCenterAchievementProgressStore {
     }
 
     private let ttl: TimeInterval
-    private var cacheEntry: CacheEntry?
-    private var inFlightLoad: InFlightLoad?
+    private var cacheEntriesByPlayerID: [String: CacheEntry] = [:]
+    private var inFlightLoadsByPlayerID: [String: InFlightLoad] = [:]
     private var nextLoadID = 0
-    private var invalidationGeneration = 0
+    private var invalidationGenerationByPlayerID: [String: Int] = [:]
+    private var locallyCompletedAchievementIDsByPlayerID: [String: Set<String>] = [:]
 
     init(ttl: TimeInterval = 3) {
         self.ttl = ttl
     }
 
-    func load(using client: any GameCenterAchievementClientProtocol) async throws -> [GameCenterAchievementProgress] {
+    func load(
+        playerID: String,
+        using client: any GameCenterAchievementClientProtocol
+    ) async throws -> [GameCenterAchievementProgress] {
         let now = Date()
-        if let cacheEntry, cacheEntry.expiresAt > now {
-            return cacheEntry.achievements
+        if let cacheEntry = cacheEntriesByPlayerID[playerID], cacheEntry.expiresAt > now {
+            return mergingLocallyCompletedAchievements(
+                into: cacheEntry.achievements,
+                playerID: playerID
+            )
         }
 
-        if let inFlightLoad {
-            return try await achievements(from: inFlightLoad)
+        if let inFlightLoad = inFlightLoadsByPlayerID[playerID] {
+            return mergingLocallyCompletedAchievements(
+                into: try await achievements(from: inFlightLoad, playerID: playerID),
+                playerID: playerID
+            )
         }
 
-        let generation = invalidationGeneration
+        let generation = invalidationGenerationByPlayerID[playerID, default: 0]
         let loadID = nextLoadID
         nextLoadID += 1
         let task = Task {
@@ -69,45 +84,111 @@ actor GameCenterAchievementProgressStore {
             generation: generation,
             task: task
         )
-        self.inFlightLoad = inFlightLoad
+        inFlightLoadsByPlayerID[playerID] = inFlightLoad
 
         do {
-            let achievements = try await achievements(from: inFlightLoad)
-            if self.inFlightLoad?.id == loadID {
-                cacheEntry = CacheEntry(
+            let achievements = mergingLocallyCompletedAchievements(
+                into: try await achievements(from: inFlightLoad, playerID: playerID),
+                playerID: playerID
+            )
+            if inFlightLoadsByPlayerID[playerID]?.id == loadID {
+                cacheEntriesByPlayerID[playerID] = CacheEntry(
                     achievements: achievements,
                     expiresAt: Date().addingTimeInterval(ttl)
                 )
-                self.inFlightLoad = nil
+                inFlightLoadsByPlayerID[playerID] = nil
             }
             return achievements
         } catch {
-            if self.inFlightLoad?.id == loadID {
-                self.inFlightLoad = nil
+            if inFlightLoadsByPlayerID[playerID]?.id == loadID {
+                inFlightLoadsByPlayerID[playerID] = nil
             }
             throw error
         }
     }
 
     @discardableResult
-    func invalidate() -> Bool {
-        guard cacheEntry != nil || inFlightLoad != nil else {
-            return false
+    func invalidate(playerID: String? = nil) -> Bool {
+        guard let playerID else {
+            let hadState = !cacheEntriesByPlayerID.isEmpty
+                || !inFlightLoadsByPlayerID.isEmpty
+                || !locallyCompletedAchievementIDsByPlayerID.isEmpty
+            guard hadState else { return false }
+
+            let playerIDs = Set(cacheEntriesByPlayerID.keys)
+                .union(inFlightLoadsByPlayerID.keys)
+                .union(locallyCompletedAchievementIDsByPlayerID.keys)
+            for playerID in playerIDs {
+                invalidationGenerationByPlayerID[playerID, default: 0] += 1
+            }
+            inFlightLoadsByPlayerID.values.forEach { $0.task.cancel() }
+            cacheEntriesByPlayerID.removeAll()
+            inFlightLoadsByPlayerID.removeAll()
+            locallyCompletedAchievementIDsByPlayerID.removeAll()
+            return true
         }
 
-        invalidationGeneration += 1
-        cacheEntry = nil
-        inFlightLoad?.task.cancel()
-        inFlightLoad = nil
+        let hadState = cacheEntriesByPlayerID[playerID] != nil
+            || inFlightLoadsByPlayerID[playerID] != nil
+            || locallyCompletedAchievementIDsByPlayerID[playerID] != nil
+        guard hadState else { return false }
+
+        invalidationGenerationByPlayerID[playerID, default: 0] += 1
+        cacheEntriesByPlayerID[playerID] = nil
+        locallyCompletedAchievementIDsByPlayerID[playerID] = nil
+        inFlightLoadsByPlayerID[playerID]?.task.cancel()
+        inFlightLoadsByPlayerID[playerID] = nil
         return true
     }
 
-    private func achievements(from inFlightLoad: InFlightLoad) async throws -> [GameCenterAchievementProgress] {
+    func markCompleted(_ achievementID: String, playerID: String) {
+        locallyCompletedAchievementIDsByPlayerID[playerID, default: []].insert(achievementID)
+        guard var cacheEntry = cacheEntriesByPlayerID[playerID] else { return }
+
+        cacheEntry.achievements = mergingLocallyCompletedAchievements(
+            into: cacheEntry.achievements,
+            playerID: playerID
+        )
+        cacheEntriesByPlayerID[playerID] = cacheEntry
+    }
+
+    private func achievements(
+        from inFlightLoad: InFlightLoad,
+        playerID: String
+    ) async throws -> [GameCenterAchievementProgress] {
         let result = await inFlightLoad.task.result
-        guard inFlightLoad.generation == invalidationGeneration else {
+        guard inFlightLoad.generation == invalidationGenerationByPlayerID[playerID, default: 0] else {
             throw CancellationError()
         }
 
         return try result.get()
+    }
+
+    private func mergingLocallyCompletedAchievements(
+        into achievements: [GameCenterAchievementProgress],
+        playerID: String
+    ) -> [GameCenterAchievementProgress] {
+        let locallyCompletedAchievementIDs = locallyCompletedAchievementIDsByPlayerID[playerID, default: []]
+        var mergedAchievements = achievements
+        var existingIDs = Set(achievements.map(\.id))
+
+        for index in mergedAchievements.indices
+        where locallyCompletedAchievementIDs.contains(mergedAchievements[index].id) {
+            mergedAchievements[index].percentComplete = 100
+            mergedAchievements[index].isCompleted = true
+        }
+
+        for achievementID in locallyCompletedAchievementIDs
+        where existingIDs.insert(achievementID).inserted {
+            mergedAchievements.append(
+                GameCenterAchievementProgress(
+                    id: achievementID,
+                    percentComplete: 100,
+                    isCompleted: true
+                )
+            )
+        }
+
+        return mergedAchievements
     }
 }

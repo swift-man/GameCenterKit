@@ -3,6 +3,10 @@ import SwiftUI
 
 struct GameCenterGoalsPopupView: View {
     let goals: [GameCenterGoalProgressInput]
+    let syncTrigger: Int
+    let authenticatedPlayerID: String?
+    let isAchievementSoundEnabled: Bool
+    let onAchievementReported: () -> Void
 
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -22,7 +26,11 @@ struct GameCenterGoalsPopupView: View {
                             goal: input.goal,
                             currentValue: input.currentValue,
                             reportsAchievementOnCompletion: input.reportsAchievementOnCompletion,
-                            style: .square
+                            style: .square,
+                            syncTrigger: syncTrigger,
+                            authenticatedPlayerID: authenticatedPlayerID,
+                            isAchievementSoundEnabled: isAchievementSoundEnabled,
+                            onAchievementReported: onAchievementReported
                         )
                     }
                 }

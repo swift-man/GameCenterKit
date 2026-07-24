@@ -21,6 +21,7 @@
 "ranking_scope.daily" = "Daily";
 "ranking_scope.weekly" = "Weekly";
 "ui.action.confirm" = "OK";
+"ui.action.retry" = "Try Again";
 "ui.debug.achievement_reset" = "Reset Test Account Achievements";
 "ui.debug.achievement_reset.failure" = "Achievement reset failed: %@";
 "ui.debug.achievement_reset.success" = "Achievements reset";
