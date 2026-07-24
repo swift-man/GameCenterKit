@@ -135,3 +135,8 @@ own storage, default value, and settings interface.
 Each feedback request uses an independent audio player. When several achievements
 complete together, their popup sounds can overlap instead of interrupting the
 sound that started first.
+
+Report simultaneous achievements one at a time with `showsCompletionBanner`
+enabled. GameKit queues its system achievement views and presents them one by one,
+while the independent feedback players allow the package sound to mix with system
+or host-app sounds.
