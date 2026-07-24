@@ -39,6 +39,33 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
         XCTAssertEqual(invalidatedLoadCallCount, 2)
     }
 
+    func testStoreAllowsRetryAfterTransientLoadFailure() async throws {
+        let achievements = [
+            GameCenterAchievementProgress(
+                id: "achievement.score-100",
+                percentComplete: 0,
+                isCompleted: false
+            ),
+        ]
+        let client = CountingAchievementClient(
+            achievements: achievements,
+            failuresBeforeSuccess: 1
+        )
+        let store = GameCenterAchievementProgressStore(ttl: 30)
+
+        do {
+            _ = try await store.load(playerID: "player-a", using: client)
+            XCTFail("Expected the first load to fail")
+        } catch AchievementLoadError.failed {
+        }
+
+        let retriedAchievements = try await store.load(playerID: "player-a", using: client)
+
+        XCTAssertEqual(retriedAchievements, achievements)
+        let loadCallCount = await client.loadCallCount()
+        XCTAssertEqual(loadCallCount, 2)
+    }
+
     func testInvalidatePreventsInFlightLoadFromRepopulatingCache() async throws {
         let loadStartedExpectation = expectation(description: "Achievement load started")
         let loadStarted = SendableExpectation(loadStartedExpectation)
@@ -332,6 +359,32 @@ final class GameCenterAchievementProgressCacheTests: XCTestCase {
             )
         )
     }
+
+    func testAchievementSyncRetryClearsFailureAndChangesTaskIdentity() {
+        var retryState = AchievementSyncRetryState()
+        retryState.fail(with: "Temporary failure")
+
+        let failedSyncID = AchievementSyncID(
+            achievementID: "achievement.score-100",
+            isAuthenticated: true,
+            authenticatedPlayerID: "player-a",
+            syncTrigger: 0,
+            retryTrigger: retryState.retryTrigger
+        )
+        XCTAssertTrue(retryState.canRetry)
+
+        retryState.retry()
+
+        let retriedSyncID = AchievementSyncID(
+            achievementID: "achievement.score-100",
+            isAuthenticated: true,
+            authenticatedPlayerID: "player-a",
+            syncTrigger: 0,
+            retryTrigger: retryState.retryTrigger
+        )
+        XCTAssertFalse(retryState.canRetry)
+        XCTAssertNotEqual(retriedSyncID, failedSyncID)
+    }
 }
 
 private actor CountingAchievementClient: GameCenterAchievementClientProtocol {
@@ -340,6 +393,7 @@ private actor CountingAchievementClient: GameCenterAchievementClientProtocol {
     private let ignoresCancellation: Bool
     private let failsAfterDelay: Bool
     private let onFirstLoadStart: @Sendable () -> Void
+    private var remainingFailures: Int
     private var loadCount = 0
 
     init(
@@ -347,12 +401,14 @@ private actor CountingAchievementClient: GameCenterAchievementClientProtocol {
         delayNanoseconds: UInt64 = 0,
         ignoresCancellation: Bool = false,
         failsAfterDelay: Bool = false,
+        failuresBeforeSuccess: Int = 0,
         onFirstLoadStart: @escaping @Sendable () -> Void = {}
     ) {
         self.achievements = achievements
         self.delayNanoseconds = delayNanoseconds
         self.ignoresCancellation = ignoresCancellation
         self.failsAfterDelay = failsAfterDelay
+        self.remainingFailures = max(0, failuresBeforeSuccess)
         self.onFirstLoadStart = onFirstLoadStart
     }
 
@@ -369,7 +425,8 @@ private actor CountingAchievementClient: GameCenterAchievementClientProtocol {
             }
         }
 
-        if failsAfterDelay {
+        if failsAfterDelay || remainingFailures > 0 {
+            remainingFailures = max(0, remainingFailures - 1)
             throw AchievementLoadError.failed
         }
 

@@ -24,6 +24,7 @@ public struct GameCenterGoalProgressView: View {
     @State private var isAchievementStateSynced = false
     @State private var syncedPlayerID: String?
     @State private var achievementSyncGeneration: UInt = 0
+    @State private var achievementSyncRetryState = AchievementSyncRetryState()
     @State private var errorMessage: String?
 
     @Environment(\.materialTheme) private var materialTheme
@@ -135,10 +136,23 @@ public struct GameCenterGoalProgressView: View {
                 }
             }
 
-            if let errorMessage {
-                Text(errorMessage)
+            if let displayedErrorMessage {
+                Text(displayedErrorMessage)
                     .font(.caption)
                     .foregroundStyle(scheme.error.color)
+            }
+
+            if achievementSyncRetryState.canRetry {
+                Button {
+                    retryAchievementSync()
+                } label: {
+                    Label(
+                        GameCenterLocalizedString.string("ui.action.retry"),
+                        systemImage: "arrow.clockwise"
+                    )
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(scheme.primary.color)
             }
         }
         .padding(16)
@@ -206,12 +220,25 @@ public struct GameCenterGoalProgressView: View {
                 .disabled(isReportingAchievement || didReportAchievement || !isAchievementStateSynced)
             }
 
-            if let errorMessage {
-                Text(errorMessage)
+            if let displayedErrorMessage {
+                Text(displayedErrorMessage)
                     .font(.caption2)
                     .foregroundStyle(scheme.error.color)
                     .lineLimit(2)
                     .minimumScaleFactor(0.7)
+            }
+
+            if achievementSyncRetryState.canRetry {
+                Button {
+                    retryAchievementSync()
+                } label: {
+                    Label(
+                        GameCenterLocalizedString.string("ui.action.retry"),
+                        systemImage: "arrow.clockwise"
+                    )
+                }
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(scheme.primary.color)
             }
         }
         .padding(12)
@@ -236,12 +263,17 @@ public struct GameCenterGoalProgressView: View {
         reportsAchievementOnCompletion && isCompleted && goal.achievementID != nil
     }
 
+    private var displayedErrorMessage: String? {
+        achievementSyncRetryState.errorMessage ?? errorMessage
+    }
+
     private var achievementSyncID: AchievementSyncID {
         AchievementSyncID(
             achievementID: goal.achievementID,
             isAuthenticated: authenticationClient.isAuthenticated,
             authenticatedPlayerID: authenticatedPlayerID,
-            syncTrigger: syncTrigger
+            syncTrigger: syncTrigger,
+            retryTrigger: achievementSyncRetryState.retryTrigger
         )
     }
 
@@ -318,6 +350,7 @@ public struct GameCenterGoalProgressView: View {
         let expectedGeneration = achievementSyncGeneration
         let expectedSyncID = achievementSyncID
         isAchievementStateSynced = false
+        achievementSyncRetryState.beginSync()
 
         guard let achievementID = goal.achievementID else {
             didReportAchievement = false
@@ -382,9 +415,19 @@ public struct GameCenterGoalProgressView: View {
         } catch is CancellationError {
             return
         } catch {
-            // A transient refresh failure must not make an already reported goal actionable again.
-            return
+            guard isCurrentSync(
+                expectedSyncID: expectedSyncID,
+                expectedGeneration: expectedGeneration
+            ) else {
+                return
+            }
+            achievementSyncRetryState.fail(with: gameCenterDisplayMessage(for: error))
         }
+    }
+
+    @MainActor
+    private func retryAchievementSync() {
+        achievementSyncRetryState.retry()
     }
 
     @MainActor
@@ -416,6 +459,29 @@ struct AchievementSyncID: Equatable {
     var isAuthenticated: Bool
     var authenticatedPlayerID: String?
     var syncTrigger: Int
+    var retryTrigger: UInt = 0
+}
+
+struct AchievementSyncRetryState: Equatable {
+    private(set) var errorMessage: String?
+    private(set) var retryTrigger: UInt = 0
+
+    var canRetry: Bool {
+        errorMessage != nil
+    }
+
+    mutating func beginSync() {
+        errorMessage = nil
+    }
+
+    mutating func fail(with message: String) {
+        errorMessage = message
+    }
+
+    mutating func retry() {
+        errorMessage = nil
+        retryTrigger &+= 1
+    }
 }
 
 func canApplyAchievementSyncResult(

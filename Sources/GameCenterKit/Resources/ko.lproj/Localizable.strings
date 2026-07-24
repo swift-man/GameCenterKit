@@ -21,6 +21,7 @@
 "ranking_scope.daily" = "일일";
 "ranking_scope.weekly" = "주간";
 "ui.action.confirm" = "확인";
+"ui.action.retry" = "다시 시도";
 "ui.debug.achievement_reset" = "테스트 계정 업적 초기화";
 "ui.debug.achievement_reset.failure" = "업적 초기화 실패: %@";
 "ui.debug.achievement_reset.success" = "업적을 초기화했습니다.";
