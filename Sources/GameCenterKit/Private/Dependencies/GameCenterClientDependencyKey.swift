@@ -30,6 +30,15 @@ enum GameCenterAchievementClientDependencyKey: DependencyKey {
     static let testValue: any GameCenterAchievementClientProtocol = UnimplementedGameCenterClient()
 }
 
+enum GameCenterAchievementFeedbackClientDependencyKey: DependencyKey {
+    static let liveValue: any GameCenterAchievementFeedbackClientProtocol =
+        LiveGameCenterAchievementFeedbackClient()
+    static let previewValue: any GameCenterAchievementFeedbackClientProtocol =
+        NoopGameCenterAchievementFeedbackClient()
+    static let testValue: any GameCenterAchievementFeedbackClientProtocol =
+        NoopGameCenterAchievementFeedbackClient()
+}
+
 enum GameCenterAccessPointClientDependencyKey: DependencyKey {
     static let liveValue: any GameCenterAccessPointClientProtocol = LiveGameCenterClient()
     static let previewValue: any GameCenterAccessPointClientProtocol = PreviewGameCenterClient()

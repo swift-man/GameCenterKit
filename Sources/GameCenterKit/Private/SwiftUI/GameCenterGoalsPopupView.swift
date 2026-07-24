@@ -3,6 +3,7 @@ import SwiftUI
 
 struct GameCenterGoalsPopupView: View {
     let goals: [GameCenterGoalProgressInput]
+    let isAchievementSoundEnabled: Bool
 
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -22,7 +23,8 @@ struct GameCenterGoalsPopupView: View {
                             goal: input.goal,
                             currentValue: input.currentValue,
                             reportsAchievementOnCompletion: input.reportsAchievementOnCompletion,
-                            style: .square
+                            style: .square,
+                            isAchievementSoundEnabled: isAchievementSoundEnabled
                         )
                     }
                 }

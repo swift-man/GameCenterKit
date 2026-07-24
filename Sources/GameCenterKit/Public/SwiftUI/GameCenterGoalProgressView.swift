@@ -15,6 +15,7 @@ public struct GameCenterGoalProgressView: View {
     private let style: GameCenterGoalProgressViewStyle
     private let theme: MaterialTheme?
     private let syncTrigger: Int
+    private let isAchievementSoundEnabled: Bool
 
     @State private var didReportAchievement = false
     @State private var isReportingAchievement = false
@@ -23,6 +24,7 @@ public struct GameCenterGoalProgressView: View {
     @Environment(\.materialTheme) private var materialTheme
     @Dependency(\.gameCenterAuthenticationClient) private var authenticationClient
     @Dependency(\.gameCenterAchievementClient) private var achievementClient
+    @Dependency(\.gameCenterAchievementFeedbackClient) private var achievementFeedbackClient
     @Dependency(\.gameCenterAchievementProgressCache) private var achievementProgressCache
 
     private var effectiveTheme: MaterialTheme {
@@ -35,7 +37,8 @@ public struct GameCenterGoalProgressView: View {
         theme: MaterialTheme,
         reportsAchievementOnCompletion: Bool = true,
         style: GameCenterGoalProgressViewStyle = .fullWidth,
-        syncTrigger: Int = 0
+        syncTrigger: Int = 0,
+        isAchievementSoundEnabled: Bool = true
     ) {
         self.goal = goal
         self.currentValue = currentValue
@@ -43,6 +46,7 @@ public struct GameCenterGoalProgressView: View {
         self.style = style
         self.theme = theme
         self.syncTrigger = syncTrigger
+        self.isAchievementSoundEnabled = isAchievementSoundEnabled
     }
 
     init(
@@ -50,7 +54,8 @@ public struct GameCenterGoalProgressView: View {
         currentValue: Int,
         reportsAchievementOnCompletion: Bool = true,
         style: GameCenterGoalProgressViewStyle = .fullWidth,
-        syncTrigger: Int = 0
+        syncTrigger: Int = 0,
+        isAchievementSoundEnabled: Bool = true
     ) {
         self.goal = goal
         self.currentValue = currentValue
@@ -58,6 +63,7 @@ public struct GameCenterGoalProgressView: View {
         self.style = style
         self.theme = nil
         self.syncTrigger = syncTrigger
+        self.isAchievementSoundEnabled = isAchievementSoundEnabled
     }
 
     public var body: some View {
@@ -276,6 +282,9 @@ public struct GameCenterGoalProgressView: View {
                 showsCompletionBanner: true
             )
             didReportAchievement = true
+            if isAchievementSoundEnabled {
+                achievementFeedbackClient.playAchievementUnlockedSound()
+            }
             await achievementProgressCache.invalidate()
         } catch {
             errorMessage = gameCenterDisplayMessage(for: error)

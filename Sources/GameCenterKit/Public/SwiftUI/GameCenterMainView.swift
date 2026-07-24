@@ -39,6 +39,7 @@ public struct GameCenterMainView: View {
     private let goals: [GameCenterGoalProgressInput]
     private let showsProfileChip: Bool
     private let showsPlayerScopePicker: Bool
+    private let isAchievementSoundEnabled: Bool
 
     #if DEBUG
     @Dependency(\.gameCenterAchievementClient) private var achievementClient
@@ -54,12 +55,14 @@ public struct GameCenterMainView: View {
         playerScope: GameCenterPlayerScope = .global,
         range: Range<Int> = 1..<51,
         showsProfileChip: Bool = true,
-        showsPlayerScopePicker: Bool = true
+        showsPlayerScopePicker: Bool = true,
+        isAchievementSoundEnabled: Bool = true
     ) {
         self.theme = theme
         self.goals = goals
         self.showsProfileChip = showsProfileChip
         self.showsPlayerScopePicker = showsPlayerScopePicker
+        self.isAchievementSoundEnabled = isAchievementSoundEnabled
         _model = StateObject(
             wrappedValue: GameCenterDashboardViewModel(
                 configuration: configuration,
@@ -108,7 +111,10 @@ public struct GameCenterMainView: View {
             #endif
         }
         .popover(isPresented: $isGoalsPopupPresented) {
-            GameCenterGoalsPopupView(goals: goals)
+            GameCenterGoalsPopupView(
+                goals: goals,
+                isAchievementSoundEnabled: isAchievementSoundEnabled
+            )
                 .materialTheme(theme)
                 .gameCenterSheetDetents()
         }
@@ -145,7 +151,8 @@ public struct GameCenterMainView: View {
                             currentValue: input.currentValue,
                             reportsAchievementOnCompletion: input.reportsAchievementOnCompletion,
                             style: .square,
-                            syncTrigger: achievementSyncTrigger
+                            syncTrigger: achievementSyncTrigger,
+                            isAchievementSoundEnabled: isAchievementSoundEnabled
                         )
                         .frame(width: 160)
                     }
